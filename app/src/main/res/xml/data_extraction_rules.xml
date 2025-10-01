@@ -3,19 +3,9 @@
     <cloud-backup>
         <include domain="file" path="."/>
         <exclude domain="file" path="NoBackup/"/>
-        <exclude domain="file" path="code_cache/"/>
-        <exclude domain="file" path="lib/"/>
-        <exclude domain="file" path="app_webview/"/>
-        <exclude domain="file" path="databases/"/>
-        <exclude domain="file" path="shared_prefs/"/>
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="."/>
         <exclude domain="file" path="NoBackup/"/>
-        <exclude domain="file" path="code_cache/"/>
-        <exclude domain="file" path="lib/"/>
-        <exclude domain="file" path="app_webview/"/>
-        <exclude domain="file" path="databases/"/>
-        <exclude domain="file" path="shared_prefs/"/>
     </device-transfer>
 </data-extraction-rules>
