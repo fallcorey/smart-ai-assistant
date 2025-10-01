@@ -22,6 +22,9 @@ class MainActivity : AppCompatActivity() {
         initViews()
         setupRecyclerView()
         setupClickListeners()
+        
+        // Добавляем приветственное сообщение
+        addWelcomeMessage()
     }
     
     private fun initViews() {
@@ -43,11 +46,14 @@ class MainActivity : AppCompatActivity() {
             if (message.isNotEmpty()) {
                 sendMessage(message)
                 editTextMessage.text.clear()
+            } else {
+                Toast.makeText(this, "Введите сообщение", Toast.LENGTH_SHORT).show()
             }
         }
         
         buttonClear.setOnClickListener {
             clearChat()
+            addWelcomeMessage()
         }
     }
     
@@ -57,11 +63,41 @@ class MainActivity : AppCompatActivity() {
         chatMessages.add(userMessage)
         chatAdapter.notifyItemInserted(chatMessages.size - 1)
         
-        // Добавляем ответ AI (пока фиктивный)
-        val aiMessage = ChatMessage("Привет! Я ваш AI помощник. Вы сказали: \"$message\"", true)
-        chatMessages.add(aiMessage)
-        chatAdapter.notifyItemInserted(chatMessages.size - 1)
+        // Имитируем ответ AI
+        simulateAIResponse(message)
         
+        scrollToBottom()
+    }
+    
+    private fun simulateAIResponse(userMessage: String) {
+        // Простые ответы AI
+        val response = when {
+            userMessage.contains("привет", ignoreCase = true) -> "Привет! Как я могу вам помочь?"
+            userMessage.contains("как дела", ignoreCase = true) -> "У меня всё отлично! Спасибо, что спросили. А у вас?"
+            userMessage.contains("спасибо", ignoreCase = true) -> "Пожалуйста! Обращайтесь, если нужна помощь."
+            userMessage.contains("погода", ignoreCase = true) -> "Для информации о погоде рекомендую использовать специализированные приложения."
+            userMessage.contains("время", ignoreCase = true) -> "Текущее время: ${java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}"
+            userMessage.contains("помощь", ignoreCase = true) -> 
+                "Я могу:\n• Отвечать на вопросы\n• Поддерживать беседу\n• Предоставлять базовую информацию"
+            else -> "Я понял ваш вопрос: \"$userMessage\". Это интересно! Для более сложных запросов рекомендуется настроить локальную AI модель."
+        }
+        
+        // Добавляем ответ AI с небольшой задержкой
+        recyclerViewChat.postDelayed({
+            val aiMessage = ChatMessage(response, true)
+            chatMessages.add(aiMessage)
+            chatAdapter.notifyItemInserted(chatMessages.size - 1)
+            scrollToBottom()
+        }, 1000)
+    }
+    
+    private fun addWelcomeMessage() {
+        val welcomeMessage = ChatMessage(
+            "Добро пожаловать! Я ваш AI помощник. Задавайте вопросы, и я постараюсь помочь.",
+            true
+        )
+        chatMessages.add(welcomeMessage)
+        chatAdapter.notifyItemInserted(chatMessages.size - 1)
         scrollToBottom()
     }
     
