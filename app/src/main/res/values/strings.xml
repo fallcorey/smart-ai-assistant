@@ -1,4 +1,3 @@
-<!-- ВСТАВЬТЕ ЭТОТ КОД В strings.xml -->
 <resources>
     <string name="app_name">Умный AI Помощник</string>
     <string name="hint_message">Введите сообщение или нажмите микрофон...</string>
