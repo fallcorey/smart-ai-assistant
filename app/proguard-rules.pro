@@ -1,4 +1,3 @@
-# ВСТАВЬТЕ ЭТОТ КОД В app/proguard-rules.pro
 # Add project specific ProGuard rules here.
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
@@ -6,17 +5,49 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Retrofit
+-keep class retrofit2.** { *; }
+-dontwarn retrofit2.**
+-keepattributes Signature, InnerClasses, EnclosingMethod
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# OkHttp
+-keep class okhttp3.** { *; }
+-dontwarn okhttp3.**
+-keepattributes Signature
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Gson
+-keep class com.google.gson.** { *; }
+-keep class sun.misc.Unsafe { *; }
+-keep class com.google.gson.stream.** { *; }
+
+# Jsoup
+-keep class org.jsoup.** { *; }
+-dontwarn org.jsoup.**
+
+# Kotlin coroutines
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
+
+# Keep our application classes
+-keep class com.example.aiassistant.** { *; }
+
+# Keep ViewBinding
+-keep class * extends androidx.viewbinding.ViewBinding {
+    public static * bind(...);
+    public static * inflate(...);
+}
+
+# Keep data classes
+-keepclassmembers class com.example.aiassistant.ChatMessage {
+    *;
+}
+
+# Android support library
+-dontwarn android.**
+-keep class androidx.** { *; }
+-keep interface androidx.** { *; }
+
+# Kotlin metadata
+-keep class kotlin.** { *; }
+-dontwarn kotlin.**
+-keep class org.jetbrains.annotations.** { *; }
