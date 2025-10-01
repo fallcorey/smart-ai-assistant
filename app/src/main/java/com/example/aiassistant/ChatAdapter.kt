@@ -1,4 +1,3 @@
-// ВСТАВЬТЕ ЭТОТ КОД В ChatAdapter.kt
 package com.example.aiassistant
 
 import android.view.LayoutInflater
