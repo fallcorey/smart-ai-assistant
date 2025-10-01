@@ -27,11 +27,14 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
       
+    - name: Clean build
+      run: ./gradlew clean --no-daemon
+      
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --no-daemon --warning-mode none
+      run: ./gradlew assembleDebug --no-daemon --warning-mode none --stacktrace
       
     - name: Build Release APK
-      run: ./gradlew assembleRelease --no-daemon --warning-mode none
+      run: ./gradlew assembleRelease --no-daemon --warning-mode none --stacktrace
         
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
