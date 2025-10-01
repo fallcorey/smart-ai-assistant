@@ -1,3 +1,9 @@
 <resources>
     <color name="color_primary">#2196F3</color>
+    <color name="color_primary_dark">#1976D2</color>
+    <color name="color_accent">#FF4081</color>
+    <color name="bg_user_message">#2196F3</color>
+    <color name="bg_ai_message">#E0E0E0</color>
+    <color name="text_user_message">#FFFFFF</color>
+    <color name="text_ai_message">#000000</color>
 </resources>
