@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:maxWidth="280dp"
         android:padding="12dp"
-        android:background="@drawable/bubble_ai"
+        android:background="#E0E0E0"
         android:textColor="#000000"
         android:textSize="16sp" />
 
