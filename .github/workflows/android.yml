@@ -19,52 +19,54 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
+      
+    - name: Validate Gradle Wrapper
+      uses: gradle/wrapper-validation-action@v1
 
     - name: Make gradlew executable
       run: chmod +x ./gradlew
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
-
-    - name: Build Release APK
+    - name: Build with Gradle
       run: |
+        ./gradlew assembleDebug
         ./gradlew assembleRelease
-        mkdir -p release-apk
-        cp app/build/outputs/apk/release/app-release.apk release-apk/
 
-    - name: Upload Release APK
+    - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: release-apk
-        path: release-apk/
-        retention-days: 30
+        name: android-apks
+        path: |
+          app/build/outputs/apk/debug/
+          app/build/outputs/apk/release/
+        retention-days: 7
 
-    - name: Upload Debug APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-apk
-        path: app/build/outputs/apk/debug/
-        retention-days: 30
-
-    - name: Create Release
+    - name: Create GitHub Release
       if: github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        files: app/build/outputs/apk/release/app-release.apk
         tag_name: v1.0.${{ github.run_number }}
-        name: Release v1.0.${{ github.run_number }}
+        release_name: Release v1.0.${{ github.run_number }}
         body: |
           Автоматическая сборка AI Assistant
-          
-          📱 **Что нового:**
           - Текстовый и голосовой ввод
           - Локальная AI модель
           - Поиск в интернете
-          - Обработка команд
-          
-          ⬇️ **Скачать:** `app-release.apk`
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: app/build/outputs/apk/release/app-release.apk
+        asset_name: app-release.apk
+        asset_content_type: application/vnd.android.package-archive
