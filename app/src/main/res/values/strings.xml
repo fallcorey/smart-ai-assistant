@@ -1,0 +1,15 @@
+<!-- ВСТАВЬТЕ ЭТОТ КОД В strings.xml -->
+<resources>
+    <string name="app_name">Умный AI Помощник</string>
+    <string name="hint_message">Введите сообщение или нажмите микрофон...</string>
+    <string name="send">Отправить</string>
+    <string name="speak">Говорите...</string>
+    <string name="typing">AI печатает...</string>
+    <string name="error_network">Ошибка сети</string>
+    <string name="error_voice">Ошибка голосового ввода</string>
+    <string name="clear_chat">Очистить чат</string>
+    <string name="voice_input">Голосовой ввод</string>
+    <string name="text_input">Текстовый ввод</string>
+    <string name="search_web">Поиск в интернете</string>
+    <string name="local_mode">Локальный режим</string>
+</resources>
