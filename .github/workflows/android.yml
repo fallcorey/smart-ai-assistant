@@ -27,40 +27,25 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
       
-    - name: Clean project
-      run: ./gradlew clean --no-daemon
-      
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --no-daemon --warning-mode none --stacktrace
+      run: ./gradlew assembleDebug --no-daemon --warning-mode none
       
     - name: Build Release APK
-      run: ./gradlew assembleRelease --no-daemon --warning-mode none --stacktrace
+      run: ./gradlew assembleRelease --no-daemon --warning-mode none
         
-    - name: Upload APK Artifacts
+    - name: List build outputs
+      run: find . -name "*.apk" -type f
+      
+    - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: android-apks
-        path: |
-          app/build/outputs/apk/debug/
-          app/build/outputs/apk/release/
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
 
-    - name: Create GitHub Release
-      if: github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v4
       with:
-        files: app/build/outputs/apk/release/app-release.apk
-        tag_name: v1.0.${{ github.run_number }}
-        name: Release v1.0.${{ github.run_number }}
-        body: |
-          🚀 Умный AI Помощник для Android
-          
-          📱 **Функции:**
-          - Текстовый и голосовой ввод
-          - Локальная AI модель  
-          - Поиск в интернете
-          - Обработка команд
-          
-          ⬇️ **Скачать APK:** `app-release.apk`
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: app-release
+        path: app/build/outputs/apk/release/app-release.apk
+        retention-days: 30
