@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp">
 
+    <!-- Заголовок -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -14,6 +16,7 @@
         android:gravity="center"
         android:layout_marginBottom="16dp" />
 
+    <!-- Список сообщений -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewChat"
         android:layout_width="match_parent"
@@ -21,21 +24,35 @@
         android:layout_weight="1"
         android:layout_marginBottom="16dp" />
 
+    <!-- Панель ввода -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
+        <!-- Кнопка микрофона -->
+        <ImageButton
+            android:id="@+id/buttonVoice"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_mic"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Голосовой ввод" />
+
+        <!-- Поле ввода текста -->
         <EditText
             android:id="@+id/editTextMessage"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Введите ваше сообщение..."
+            android:hint="Введите сообщение или нажмите микрофон..."
             android:inputType="textMultiLine"
             android:maxLines="3"
             android:padding="12dp" />
 
+        <!-- Кнопка отправки -->
         <Button
             android:id="@+id/buttonSend"
             android:layout_width="wrap_content"
@@ -46,11 +63,52 @@
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/buttonClear"
+    <!-- Панель управления -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="🗑️ Очистить чат"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <Button
+            android:id="@+id/buttonClear"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🗑️ Очистить"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/buttonSearch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔍 Поиск"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp" />
+
+    </LinearLayout>
+
+    <!-- Индикатор загрузки -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:layout_marginTop="8dp" />
+
+    <!-- Индикатор голосового ввода -->
+    <TextView
+        android:id="@+id/textVoiceStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🎤 Говорите..."
+        android:gravity="center"
+        android:background="#4CAF50"
+        android:textColor="#FFFFFF"
+        android:padding="12dp"
+        android:visibility="gone"
         android:layout_marginTop="8dp" />
 
 </LinearLayout>
