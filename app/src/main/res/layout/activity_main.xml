@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Умный AI Помощник"
+        android:text="🤖 Умный AI Помощник"
         android:textSize="24sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -31,14 +31,17 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Введите сообщение..."
-            android:inputType="text" />
+            android:hint="Введите ваше сообщение..."
+            android:inputType="textMultiLine"
+            android:maxLines="3"
+            android:padding="12dp" />
 
         <Button
             android:id="@+id/buttonSend"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Отправить"
+            android:text="➤"
+            android:textSize="18sp"
             android:layout_marginStart="8dp" />
 
     </LinearLayout>
@@ -47,7 +50,7 @@
         android:id="@+id/buttonClear"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Очистить чат"
+        android:text="🗑️ Очистить чат"
         android:layout_marginTop="8dp" />
 
 </LinearLayout>
