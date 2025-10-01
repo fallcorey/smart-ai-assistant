@@ -1,4 +1,3 @@
-<!-- ВСТАВЬТЕ ЭТОТ КОД В item_message_ai.xml -->
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -14,7 +13,7 @@
         android:maxWidth="280dp"
         android:padding="12dp"
         android:background="@drawable/bubble_ai"
-        android:textColor="@color/text_ai_message"
+        android:textColor="#000000"
         android:textSize="16sp" />
 
 </LinearLayout>
