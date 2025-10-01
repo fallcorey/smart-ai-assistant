@@ -28,10 +28,10 @@ jobs:
       run: chmod +x ./gradlew
       
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --warning-mode none
+      run: ./gradlew assembleDebug --no-daemon --warning-mode none
       
     - name: Build Release APK
-      run: ./gradlew assembleRelease --warning-mode none
+      run: ./gradlew assembleRelease --no-daemon --warning-mode none
         
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
