@@ -1,4 +1,3 @@
-// ВСТАВЬТЕ ЭТОТ КОД В VoiceManager.kt
 package com.example.aiassistant
 
 import android.content.Context
