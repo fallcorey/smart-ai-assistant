@@ -31,40 +31,47 @@ class CommandProcessor(private val context: Context) {
             
             // Команды помощи
             lowerMessage.contains("помощь") || lowerMessage.contains("команды") -> 
-                """Доступные команды:
-                • Приветствие
+                """🎯 **Доступные команды:**
+                
+                🕐 **Время и дата:**
                 • "Который час?" - узнать время
                 • "Какое число?" - узнать дату
-                • "Поиск [запрос]" - поиск в интернете
+                
+                🎤 **Голосовые команды:**
+                • Нажмите кнопку микрофона для голосового ввода
+                
+                💬 **Общение:**
+                • Просто задавайте вопросы
+                • "Как дела?" - узнать мое состояние
+                
+                🧹 **Управление:**
                 • "Очистить чат" - очистить историю
                 
-                Также вы можете просто задавать вопросы!"""
+                Просто напишите или скажите команду!"""
             
-            // Команды поиска
-            lowerMessage.contains("поиск") && lowerMessage.length > 6 -> {
-                val query = message.substringAfter("поиск").trim()
-                if (query.isNotEmpty()) {
-                    null // Отправляем в основной поиск
-                } else {
-                    "Пожалуйста, укажите что искать. Например: 'поиск погода в Москве'"
-                }
-            }
-            
-            // Простые ответы
-            lowerMessage.contains("как дела") -> 
-                "Всё отлично! Готов помогать вам. А у вас как дела?"
-            
-            lowerMessage.contains("спасибо") -> 
-                "Пожалуйста! Обращайтесь, если нужна помощь."
+            // Команды очистки
+            lowerMessage.contains("очист") || lowerMessage.contains("удал") -> 
+                null // Обрабатывается в MainActivity
             
             // Неизвестные команды
             else -> null
         }
     }
     
-    private fun setAlarm(message: String): String {
+    fun executeSystemCommand(message: String): Boolean {
+        val lowerMessage = message.lowercase()
+        
+        return when {
+            lowerMessage.contains("будильник") && lowerMessage.contains("установ") -> {
+                setAlarm(message)
+                true
+            }
+            else -> false
+        }
+    }
+    
+    private fun setAlarm(message: String): Boolean {
         return try {
-            // Простая реализация будильника
             val timePattern = Regex("""(\d{1,2}):(\d{2})""")
             val match = timePattern.find(message)
             
@@ -75,20 +82,20 @@ class CommandProcessor(private val context: Context) {
                 val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
                     putExtra(AlarmClock.EXTRA_HOUR, hours)
                     putExtra(AlarmClock.EXTRA_MINUTES, minutes)
-                    putExtra(AlarmClock.EXTRA_MESSAGE, "Будильник")
+                    putExtra(AlarmClock.EXTRA_MESSAGE, "Будильник от AI помощника")
                 }
                 
                 if (intent.resolveActivity(context.packageManager) != null) {
                     context.startActivity(intent)
-                    "Будильник установлен на $hours:$minutes"
+                    true
                 } else {
-                    "Приложение будильника не найдено"
+                    false
                 }
             } else {
-                "Пожалуйста, укажите время в формате ЧЧ:MM"
+                false
             }
         } catch (e: Exception) {
-            "Ошибка при установке будильника: ${e.message}"
+            false
         }
     }
 }
