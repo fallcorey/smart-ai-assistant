@@ -1,24 +1,32 @@
-// ВСТАВЬТЕ ЭТОТ КОД В MainActivity.kt
 package com.example.aiassistant
 
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognizerIntent
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.aiassistant.databinding.ActivityMainBinding
+import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var recyclerViewChat: RecyclerView
+    private lateinit var editTextMessage: EditText
+    private lateinit var buttonSend: ImageButton
+    private lateinit var buttonVoice: ImageButton
+    private lateinit var buttonClear: Button
+    private lateinit var buttonSearch: Button
+    private lateinit var progressBar: ProgressBar
+    private lateinit var textVoiceStatus: TextView
+    
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
     private val aiClient = AIClient()
@@ -32,25 +40,36 @@ class MainActivity : AppCompatActivity() {
         val results = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
         if (!results.isNullOrEmpty()) {
             val spokenText = results[0]
-            binding.editTextMessage.setText(spokenText)
+            editTextMessage.setText(spokenText)
             sendMessage(spokenText)
         }
-        binding.textVoiceStatus.visibility = android.view.View.GONE
+        textVoiceStatus.visibility = android.view.View.GONE
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_main)
         
+        initViews()
         setupRecyclerView()
         setupClickListeners()
         checkPermissions()
     }
     
+    private fun initViews() {
+        recyclerViewChat = findViewById(R.id.recyclerViewChat)
+        editTextMessage = findViewById(R.id.editTextMessage)
+        buttonSend = findViewById(R.id.buttonSend)
+        buttonVoice = findViewById(R.id.buttonVoice)
+        buttonClear = findViewById(R.id.buttonClear)
+        buttonSearch = findViewById(R.id.buttonSearch)
+        progressBar = findViewById(R.id.progressBar)
+        textVoiceStatus = findViewById(R.id.textVoiceStatus)
+    }
+    
     private fun setupRecyclerView() {
         chatAdapter = ChatAdapter(chatMessages)
-        binding.recyclerViewChat.apply {
+        recyclerViewChat.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = chatAdapter
         }
@@ -58,27 +77,27 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupClickListeners() {
         // Отправка текстового сообщения
-        binding.buttonSend.setOnClickListener {
-            val message = binding.editTextMessage.text.toString().trim()
+        buttonSend.setOnClickListener {
+            val message = editTextMessage.text.toString().trim()
             if (message.isNotEmpty()) {
                 sendMessage(message)
-                binding.editTextMessage.text.clear()
+                editTextMessage.text.clear()
             }
         }
         
         // Голосовой ввод
-        binding.buttonVoice.setOnClickListener {
+        buttonVoice.setOnClickListener {
             startVoiceInput()
         }
         
         // Очистка чата
-        binding.buttonClear.setOnClickListener {
+        buttonClear.setOnClickListener {
             clearChat()
         }
         
         // Поиск в интернете
-        binding.buttonSearch.setOnClickListener {
-            val message = binding.editTextMessage.text.toString().trim()
+        buttonSearch.setOnClickListener {
+            val message = editTextMessage.text.toString().trim()
             if (message.isNotEmpty()) {
                 searchWeb(message)
             } else {
@@ -95,7 +114,7 @@ class MainActivity : AppCompatActivity() {
         scrollToBottom()
         
         // Показываем прогресс
-        binding.progressBar.visibility = android.view.View.VISIBLE
+        progressBar.visibility = android.view.View.VISIBLE
         
         // Обрабатываем команды или отправляем AI
         CoroutineScope(Dispatchers.IO).launch {
@@ -104,7 +123,7 @@ class MainActivity : AppCompatActivity() {
                 val commandResponse = commandProcessor.processCommand(message)
                 if (commandResponse != null) {
                     withContext(Dispatchers.Main) {
-                        binding.progressBar.visibility = android.view.View.GONE
+                        progressBar.visibility = android.view.View.GONE
                         val aiMessage = ChatMessage(commandResponse, true)
                         chatMessages.add(aiMessage)
                         chatAdapter.notifyItemInserted(chatMessages.size - 1)
@@ -116,7 +135,7 @@ class MainActivity : AppCompatActivity() {
                 // Если не команда, то AI ответ
                 val response = aiClient.getAIResponse(message)
                 withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = android.view.View.GONE
+                    progressBar.visibility = android.view.View.GONE
                     
                     if (response.isNotEmpty()) {
                         val aiMessage = ChatMessage(response, true)
@@ -129,7 +148,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = android.view.View.GONE
+                    progressBar.visibility = android.view.View.GONE
                     showError("Ошибка сети: ${e.message}")
                 }
             }
@@ -140,7 +159,7 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) 
             == PackageManager.PERMISSION_GRANTED) {
             
-            binding.textVoiceStatus.visibility = android.view.View.VISIBLE
+            textVoiceStatus.visibility = android.view.View.VISIBLE
             
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -182,7 +201,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun scrollToBottom() {
-        binding.recyclerViewChat.scrollToPosition(chatMessages.size - 1)
+        recyclerViewChat.scrollToPosition(chatMessages.size - 1)
     }
     
     private fun showError(message: String) {
