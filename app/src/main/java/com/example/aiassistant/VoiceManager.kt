@@ -2,8 +2,7 @@ package com.example.aiassistant
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
-import java.util.Locale
+import java.util.*
 
 class VoiceManager(context: Context) : TextToSpeech.OnInitListener {
     
@@ -43,7 +42,7 @@ class VoiceManager(context: Context) : TextToSpeech.OnInitListener {
         tts?.shutdown()
     }
     
-    fun setOnUtteranceProgressListener(listener: UtteranceProgressListener) {
-        tts?.setOnUtteranceProgressListener(listener)
+    fun isReady(): Boolean {
+        return isInitialized
     }
 }
