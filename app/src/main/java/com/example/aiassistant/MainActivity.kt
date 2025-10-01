@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
             editTextMessage.setText(spokenText)
             sendMessage(spokenText)
         }
-        textVoiceStatus.visibility = android.view.View.GONE
+        textVoiceStatus.visibility = View.GONE
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         scrollToBottom()
         
         // Показываем прогресс
-        progressBar.visibility = android.view.View.VISIBLE
+        progressBar.visibility = View.VISIBLE
         
         // Обрабатываем команды или отправляем AI
         CoroutineScope(Dispatchers.IO).launch {
@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
                 val commandResponse = commandProcessor.processCommand(message)
                 if (commandResponse != null) {
                     withContext(Dispatchers.Main) {
-                        progressBar.visibility = android.view.View.GONE
+                        progressBar.visibility = View.GONE
                         val aiMessage = ChatMessage(commandResponse, true)
                         chatMessages.add(aiMessage)
                         chatAdapter.notifyItemInserted(chatMessages.size - 1)
@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                 // Проверяем системные команды
                 if (commandProcessor.executeSystemCommand(message)) {
                     withContext(Dispatchers.Main) {
-                        progressBar.visibility = android.view.View.GONE
+                        progressBar.visibility = View.GONE
                         val aiMessage = ChatMessage("Команда выполнена!", true)
                         chatMessages.add(aiMessage)
                         chatAdapter.notifyItemInserted(chatMessages.size - 1)
@@ -156,7 +156,7 @@ class MainActivity : AppCompatActivity() {
                 // Если не команда, то AI ответ
                 val response = aiClient.getAIResponse(message)
                 withContext(Dispatchers.Main) {
-                    progressBar.visibility = android.view.View.GONE
+                    progressBar.visibility = View.GONE
                     
                     if (response.isNotEmpty()) {
                         val aiMessage = ChatMessage(response, true)
@@ -174,7 +174,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    progressBar.visibility = android.view.View.GONE
+                    progressBar.visibility = View.GONE
                     showError("Ошибка: ${e.message}")
                 }
             }
@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) 
             == PackageManager.PERMISSION_GRANTED) {
             
-            textVoiceStatus.visibility = android.view.View.VISIBLE
+            textVoiceStatus.visibility = View.VISIBLE
             
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
