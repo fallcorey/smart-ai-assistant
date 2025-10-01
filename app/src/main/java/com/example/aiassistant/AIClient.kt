@@ -1,4 +1,3 @@
-// ВСТАВЬТЕ ЭТОТ КОД В AIClient.kt
 package com.example.aiassistant
 
 import kotlinx.coroutines.Dispatchers
