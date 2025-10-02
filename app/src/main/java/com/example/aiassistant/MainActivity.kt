@@ -49,7 +49,6 @@ class MainActivity : AppCompatActivity() {
     private var waitingForFeedback = false
     private var isProcessingPDF = false
 
-    // Регистрация для распознавания речи
     private val speechRecognizer = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -65,7 +64,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    // Регистрация для выбора файлов
     private val filePicker = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -78,7 +76,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        // Инициализируем менеджеры после setContentView
         voiceManager = VoiceManager(this)
         alarmManager = AlarmManager(this)
         alarmManager.loadAlarms()
@@ -116,8 +113,6 @@ class MainActivity : AppCompatActivity() {
             if (message.isNotEmpty()) {
                 sendMessage(message)
                 editTextMessage.text.clear()
-            } else {
-                Toast.makeText(this, "Введите сообщение", Toast.LENGTH_SHORT).show()
             }
         }
         
@@ -133,8 +128,6 @@ class MainActivity : AppCompatActivity() {
         buttonFile.setOnClickListener {
             if (!isProcessingPDF) {
                 openFilePicker()
-            } else {
-                Toast.makeText(this, "Дождитесь завершения обработки", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -146,36 +139,27 @@ class MainActivity : AppCompatActivity() {
     private fun handleFileSelection(uri: Uri) {
         isProcessingPDF = true
         buttonFile.isEnabled = false
-        showProgress("Подготовка к обработке PDF...")
+        showProgress("Подготовка...")
         
-        addAIResponse("📖 Начинаю обработку PDF файла...", false)
+        addAIResponse("📖 Начинаю обработку PDF...", false)
         
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                pdfManager.learnFromPDF(uri)
-                    .onEach { progress ->
-                        runOnUiThread {
-                            updateProgress(progress)
-                        }
+            pdfManager.learnFromPDF(uri)
+                .onEach { progress ->
+                    runOnUiThread {
+                        updateProgress(progress)
                     }
-                    .collect { progress ->
-                        if (progress.progress == 100) {
-                            runOnUiThread {
-                                hideProgress()
-                                buttonFile.isEnabled = true
-                                isProcessingPDF = false
-                                addAIResponse(progress.message, false)
-                            }
-                        }
-                    }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    hideProgress()
-                    buttonFile.isEnabled = true
-                    isProcessingPDF = false
-                    addAIResponse("❌ Ошибка: ${e.message}", false)
                 }
-            }
+                .collect { progress ->
+                    runOnUiThread {
+                        if (progress.progress == 100) {
+                            hideProgress()
+                            buttonFile.isEnabled = true
+                            isProcessingPDF = false
+                            addAIResponse(progress.message, false)
+                        }
+                    }
+                }
         }
     }
     
@@ -192,14 +176,13 @@ class MainActivity : AppCompatActivity() {
     
     private fun updateProgress(progress: PDFManager.ProcessingProgress) {
         progressBar.progress = progress.progress
-        progressText.text = "${progress.step}: ${progress.progress}% - ${progress.message}"
+        progressText.text = "${progress.step}: ${progress.progress}%"
         
-        // Обновляем последнее сообщение с прогрессом
         if (progress.progress < 100) {
             if (chatMessages.isNotEmpty() && chatMessages.last().isAI) {
                 chatMessages.removeAt(chatMessages.size - 1)
             }
-            addAIResponse("🔄 ${progress.step}: ${progress.progress}%\n${progress.message}", false)
+            addAIResponse("🔄 ${progress.step}: ${progress.progress}%", false)
         }
     }
     
@@ -214,7 +197,7 @@ class MainActivity : AppCompatActivity() {
         chatMessages.add(userMessage)
         chatAdapter.notifyItemInserted(chatMessages.size - 1)
         
-        showProgress("Обработка запроса...")
+        showProgress("Обработка...")
         
         if (message.contains("найди") || message.contains("поиск") || message.contains("что такое") || 
             message.contains("кто такой") || message.contains("новости") || message.contains("погода")) {
@@ -235,58 +218,27 @@ class MainActivity : AppCompatActivity() {
         when (message.lowercase()) {
             "да", "👍" -> {
                 knowledgeManager.learn(lastUserMessage, lastAIResponse)
-                addAIResponse("✅ Спасибо! Запомнил ответ. 🧠", false)
+                addAIResponse("✅ Запомнил!", false)
             }
             "нет", "👎" -> {
-                knowledgeManager.improveAnswer(lastUserMessage, false)
-                addAIResponse("❌ Понял, учту в будущем.", false)
+                addAIResponse("❌ Понял", false)
             }
             "не важно", "🤷" -> {
-                addAIResponse("Хорошо, продолжаем! 😊", false)
-            }
-            else -> {
-                lastUserMessage = message
-                val userMessage = ChatMessage(message, false)
-                chatMessages.add(userMessage)
-                chatAdapter.notifyItemInserted(chatMessages.size - 1)
-                
-                showProgress("Обработка запроса...")
-                handler.postDelayed({
-                    hideProgress()
-                    val response = generateAIResponse(message)
-                    lastAIResponse = response
-                    addAIResponse(response, true)
-                }, 1000)
+                addAIResponse("Продолжаем!", false)
             }
         }
         waitingForFeedback = false
-        scrollToBottom()
     }
     
     private fun handleSearchQuery(message: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = when {
-                    message.contains("погода") -> {
-                        val city = extractSearchQuery(message, "погода")
-                        if (city.isNotEmpty() && city != message) {
-                            webSearchManager.getWeather(city)
-                        } else {
-                            webSearchManager.getWeather()
-                        }
-                    }
-                    message.contains("новости") -> {
-                        val topic = extractSearchQuery(message, "новости")
-                        webSearchManager.getNews(topic)
-                    }
-                    message.contains("что такое") || message.contains("кто такой") -> {
-                        val query = extractSearchQuery(message, listOf("что такое", "кто такой"))
-                        webSearchManager.getQuickAnswer(query)
-                    }
-                    else -> {
-                        val query = extractSearchQuery(message, listOf("найди", "поиск", "найти"))
-                        webSearchManager.searchWeb(query)
-                    }
+                    message.contains("погода") -> webSearchManager.getWeather()
+                    message.contains("новости") -> webSearchManager.getNews()
+                    message.contains("что такое") || message.contains("кто такой") -> 
+                        webSearchManager.getQuickAnswer(message)
+                    else -> webSearchManager.searchWeb(message)
                 }
                 
                 runOnUiThread {
@@ -297,8 +249,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 runOnUiThread {
                     hideProgress()
-                    lastAIResponse = "❌ Ошибка: ${e.message}"
-                    addAIResponse(lastAIResponse, true)
+                    addAIResponse("❌ Ошибка", true)
                 }
             }
         }
@@ -323,30 +274,22 @@ class MainActivity : AppCompatActivity() {
         chatMessages.add(aiMessage)
         chatAdapter.notifyItemInserted(chatMessages.size - 1)
         
-        if (showFeedback && !response.contains("❌") && !response.contains("⚠️") && 
-            lastUserMessage.isNotEmpty() && !lastUserMessage.contains("запомни")) {
+        if (showFeedback && !response.contains("❌")) {
             addFeedbackButtons()
             waitingForFeedback = true
         }
         
         if (isVoiceResponseEnabled && voiceManager.isReady()) {
-            val speechText = response.replace(Regex("[🎯🕐📅📆⏰💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉🎤🌤️ℹ️✅❌🔍⏰⏱️🔔📋📰🔍🎯⚠️❌ℹ️🌧️❄️🌥️🌤️🤔👍👎🤷📊🧠📖📚🔍🔄📊]"), "")
-                .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
-                .trim()
-            voiceManager.speak(speechText)
+            voiceManager.speak(response.replace(Regex("[^\\w\\s]"), ""))
         }
         
         scrollToBottom()
     }
     
     private fun addFeedbackButtons() {
-        val feedbackMessage = ChatMessage(
-            "🤔 Был ли ответ полезен?\n👍 Да  |  👎 Нет  |  🤷 Не важно",
-            true
-        )
+        val feedbackMessage = ChatMessage("🤔 Полезен ответ?\n👍 Да  👎 Нет", true)
         chatMessages.add(feedbackMessage)
         chatAdapter.notifyItemInserted(chatMessages.size - 1)
-        scrollToBottom()
     }
     
     private fun generateAIResponse(userMessage: String): String {
@@ -354,245 +297,71 @@ class MainActivity : AppCompatActivity() {
         
         val learnedAnswer = knowledgeManager.findAnswer(message)
         if (learnedAnswer != null) {
-            return "🧠 " + learnedAnswer.answer + "\n\n*[Из базы знаний]*"
+            return "🧠 ${learnedAnswer.answer}"
         }
         
         return when {
-            message.contains("привет") || message.contains("здравствуй") -> 
-                "Привет! Чем могу помочь?"
-            
-            message.contains("как дела") || message.contains("как ты") -> 
-                "Всё отлично! А у вас?"
-            
-            message.contains("спасибо") || message.contains("благодарю") -> 
-                "Пожалуйста! Обращайтесь!"
-            
-            message.contains("запомни") && message.contains("что") -> {
-                handleLearningCommand(userMessage)
-            }
-            
-            message.contains("что ты знаешь") -> {
-                knowledgeManager.getKnowledgeStats()
-            }
-            
-            message.contains("забудь") -> {
-                handleForgetCommand(userMessage)
-            }
-            
-            message.contains("анализируй pdf") -> {
-                "Нажмите кнопку '📁 Файл' для выбора PDF"
-            }
-            
-            message.contains("время") || message.contains("который час") -> {
-                val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-                "Сейчас $time"
-            }
-            
-            message.contains("дата") || message.contains("какое число") -> {
-                val date = SimpleDateFormat("dd MMMM yyyy", Locale("ru", "RU")).format(Date())
-                "Сегодня $date"
-            }
-            
-            message.contains("день недели") -> {
-                val days = arrayOf("Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота")
-                val calendar = Calendar.getInstance()
-                val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1
-                "Сегодня ${days[dayOfWeek]}"
-            }
-            
-            message.contains("погода") -> {
-                "Используйте: 'Погода Москва'"
-            }
-            
-            message.contains("будильник") || message.contains("разбуди") -> {
-                handleAlarmCommand(message)
-            }
-            
-            message.contains("таймер") || message.contains("засеки") -> {
-                handleTimerCommand(message)
-            }
-            
-            message.contains("мои будильники") -> {
-                showAlarms()
-            }
-            
-            message.contains("напомни") -> {
-                handleReminderCommand(message)
-            }
-            
-            message.contains("мои напоминания") -> {
-                showReminders()
-            }
-            
-            message.contains("очисти напоминания") -> {
-                reminders.clear()
-                "✅ Напоминания очищены"
-            }
-            
-            message.contains("помощь") || message.contains("команды") -> 
-                """Доступные команды:
-
-• 💬 Общение: Привет, Как дела
-• 🧠 Обучение: Запомни что...
-• 📖 PDF: Нажмите кнопку 📁
-• 🕐 Время и дата
-• 😂 Шутки
-• 📊 Расчеты
-• 🔍 Поиск
-• 📰 Новости
-• 🌤️ Погода
-• ⏰ Будильники
-• ⏱️ Таймеры
-• 📋 Напоминания"""
-            
-            message.contains("шутка") || message.contains("анекдот") -> {
-                val jokes = listOf(
-                    "Почему программисты путают Хэллоуин и Рождество? Oct 31 == Dec 25!",
-                    "Что сказал один байт другому? Я тебя не бит!",
-                    "Почему Java разработчики носят очки? Потому что не C#!"
-                )
-                jokes.random()
-            }
-            
-            message.contains("посчитай") || message.contains("сколько будет") -> {
-                calculateMathExpression(message)
-            }
-            
-            message.contains("голос") && message.contains("выключи") -> {
-                isVoiceResponseEnabled = false
-                voiceManager.stop()
-                "🔇 Голос выключен"
-            }
-            
-            message.contains("голос") && message.contains("включи") -> {
-                isVoiceResponseEnabled = true
-                "🔊 Голос включен"
-            }
-            
-            message.contains("пока") || message.contains("до свидания") -> 
-                "👋 До свидания!"
-            
-            else -> {
-                "🤔 Не знаю ответ. Научите: 'Запомни, что $userMessage - это [ответ]'"
-            }
+            message.contains("привет") -> "Привет!"
+            message.contains("как дела") -> "Хорошо!"
+            message.contains("спасибо") -> "Пожалуйста!"
+            message.contains("запомни") -> handleLearningCommand(userMessage)
+            message.contains("что ты знаешь") -> knowledgeManager.getKnowledgeStats()
+            message.contains("забудь") -> handleForgetCommand(userMessage)
+            message.contains("время") -> SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            message.contains("дата") -> SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
+            message.contains("шутка") -> "Почему программисты путают Хэллоуин и Рождество? Oct 31 == Dec 25!"
+            message.contains("посчитай") -> calculateMathExpression(message)
+            message.contains("помощь") -> "Команды: привет, время, дата, шутка, посчитай, запомни, забудь"
+            else -> "Не знаю ответ. Научите: 'Запомни, что $userMessage - это [ответ]'"
         }
     }
     
     private fun handleLearningCommand(message: String): String {
-        return try {
-            val pattern = "запомни\\s*,\\s*что\\s*(.+)\\s*-\\s*это\\s*(.+)".toRegex(RegexOption.IGNORE_CASE)
-            val match = pattern.find(message)
-            
-            if (match != null) {
-                val question = match.groupValues[1].trim()
-                val answer = match.groupValues[2].trim()
-                
-                if (question.isNotEmpty() && answer.isNotEmpty()) {
-                    knowledgeManager.learn(question, answer)
-                    "✅ Запомнил: '$question' - это '$answer'"
-                } else {
-                    "❌ Формат: 'Запомни, что кошки - это животные'"
-                }
-            } else {
-                "❌ Формат: 'Запомни, что кошки - это животные'"
-            }
-        } catch (e: Exception) {
-            "❌ Ошибка: ${e.message}"
+        val pattern = "запомни, что (.+) - это (.+)".toRegex(RegexOption.IGNORE_CASE)
+        val match = pattern.find(message)
+        return if (match != null) {
+            val question = match.groupValues[1].trim()
+            val answer = match.groupValues[2].trim()
+            knowledgeManager.learn(question, answer)
+            "✅ Запомнил!"
+        } else {
+            "❌ Формат: 'Запомни, что кошки - это животные'"
         }
     }
     
     private fun handleForgetCommand(message: String): String {
-        return try {
-            val question = message.replace("забудь", "").trim()
-            if (question.isNotEmpty()) {
-                knowledgeManager.forget(question)
-                "✅ Забыл: '$question'"
-            } else {
-                "❌ Укажите что забыть"
-            }
-        } catch (e: Exception) {
-            "❌ Ошибка: ${e.message}"
-        }
-    }
-    
-    private fun handleAlarmCommand(message: String): String {
-        val time = alarmManager.parseTimeFromText(message)
-        return if (time != null) {
-            val (hours, minutes) = time
-            alarmManager.setAlarm(hours, minutes, "Будильник")
+        val question = message.replace("забудь", "").trim()
+        return if (question.isNotEmpty()) {
+            knowledgeManager.forget(question)
+            "✅ Забыл"
         } else {
-            "❌ Скажите: 'Поставь будильник на 7:30'"
-        }
-    }
-    
-    private fun handleTimerCommand(message: String): String {
-        val duration = alarmManager.parseDurationFromText(message)
-        return if (duration != null) {
-            alarmManager.setTimer(duration, "Таймер")
-        } else {
-            "❌ Скажите: 'Таймер на 5 минут'"
-        }
-    }
-    
-    private fun showAlarms(): String {
-        val alarms = alarmManager.getAlarms()
-        return if (alarms.isNotEmpty()) {
-            alarms.joinToString("\n• ", "✅ Будильники:\n• ") { "${it.time} - ${it.message}" }
-        } else {
-            "ℹ️ Нет будильников"
-        }
-    }
-    
-    private fun handleReminderCommand(message: String): String {
-        val reminderText = message.replace("напомни", "").trim()
-        return if (reminderText.isNotEmpty() && reminderText != message) {
-            reminders.add(reminderText)
-            "✅ Запомнил: $reminderText"
-        } else {
-            "❌ Скажите: 'Напомни купить молоко'"
-        }
-    }
-    
-    private fun showReminders(): String {
-        return if (reminders.isNotEmpty()) {
-            reminders.joinToString("\n• ", "✅ Напоминания:\n• ")
-        } else {
-            "ℹ️ Нет напоминаний"
+            "❌ Укажите что забыть"
         }
     }
     
     private fun calculateMathExpression(expression: String): String {
         return try {
-            val cleanExpr = expression.replace("посчитай", "").replace("сколько будет", "").replace(" ", "")
-            
+            val cleanExpr = expression.replace("посчитай", "").replace(" ", "")
             when {
                 cleanExpr.contains("+") -> {
                     val parts = cleanExpr.split("+")
                     val result = parts[0].toDouble() + parts[1].toDouble()
-                    "✅ Результат: $result"
+                    "✅ $result"
                 }
                 cleanExpr.contains("-") -> {
                     val parts = cleanExpr.split("-")
                     val result = parts[0].toDouble() - parts[1].toDouble()
-                    "✅ Результат: $result"
+                    "✅ $result"
                 }
                 cleanExpr.contains("*") -> {
                     val parts = cleanExpr.split("*")
                     val result = parts[0].toDouble() * parts[1].toDouble()
-                    "✅ Результат: $result"
+                    "✅ $result"
                 }
-                cleanExpr.contains("/") -> {
-                    val parts = cleanExpr.split("/")
-                    if (parts[1].toDouble() == 0.0) "❌ Деление на ноль"
-                    else {
-                        val result = parts[0].toDouble() / parts[1].toDouble()
-                        "✅ Результат: $result"
-                    }
-                }
-                else -> "❌ Не понимаю выражение"
+                else -> "❌ Не понимаю"
             }
         } catch (e: Exception) {
-            "❌ Ошибка вычисления"
+            "❌ Ошибка"
         }
     }
     
@@ -606,11 +375,7 @@ class MainActivity : AppCompatActivity() {
                 putExtra(RecognizerIntent.EXTRA_PROMPT, "Говорите...")
             }
             
-            try {
-                speechRecognizer.launch(intent)
-            } catch (e: Exception) {
-                Toast.makeText(this, "Голосовой ввод не поддерживается", Toast.LENGTH_SHORT).show()
-            }
+            speechRecognizer.launch(intent)
         } else {
             requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 1)
         }
@@ -619,18 +384,12 @@ class MainActivity : AppCompatActivity() {
     private fun addWelcomeMessage() {
         val welcomeMessage = ChatMessage(
             "🎉 Добро пожаловать!\n\n" +
-            "Я могу:\n" +
-            "• 📖 Читать PDF с прогрессом\n" +
-            "• 🧠 Самообучаться\n" +
-            "• 🎤 Распознавать голос\n" +
-            "• 🔊 Озвучивать ответы\n" +
-            "• 🔍 Искать в интернете\n\n" +
-            "Нажмите 📁 для загрузки PDF!",
+            "Нажмите 📁 для загрузки PDF с прогрессом!\n\n" +
+            "Команды: привет, время, дата, шутка, помощь",
             true
         )
         chatMessages.add(welcomeMessage)
         chatAdapter.notifyItemInserted(chatMessages.size - 1)
-        scrollToBottom()
     }
     
     private fun clearChat() {
