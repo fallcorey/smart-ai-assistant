@@ -48,13 +48,29 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
                     emit(ProcessingProgress("Извлечение знаний", 60, "Найдено $totalSentences предложений..."))
                     
                     // Обрабатываем текст и изучаем факты
-                    val learnedCount = processAndLearnText(text) { current, total ->
-                        val progress = 60 + (current * 30 / total)
-                        emit(ProcessingProgress(
-                            "Обучение", 
-                            progress, 
-                            "Изучаю предложение $current из $total..."
-                        ))
+                    var learnedCount = 0
+                    val sentences = text.split('.', '!', '?', '\n')
+                        .map { it.trim() }
+                        .filter { it.length > 20 && it.length < 500 }
+                    
+                    val totalToProcess = sentences.size.coerceAtMost(50)
+                    
+                    sentences.forEachIndexed { index, sentence ->
+                        if (learnedCount < 50 && sentence.isNotEmpty()) {
+                            val words = sentence.split(' ').filter { it.length > 3 }
+                            if (words.size >= 3) {
+                                val keyWords = words.take(3).joinToString(" ")
+                                knowledgeManager.learn(keyWords, sentence)
+                                learnedCount++
+                                
+                                val progress = 60 + (index * 30 / totalToProcess)
+                                emit(ProcessingProgress(
+                                    "Обучение", 
+                                    progress, 
+                                    "Изучаю предложение ${index + 1} из $totalToProcess..."
+                                ))
+                            }
+                        }
                     }
                     
                     emit(ProcessingProgress("Завершение", 100, "✅ Успешно обработан PDF! Изучено $learnedCount фактов."))
@@ -67,31 +83,6 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
         } catch (e: Exception) {
             emit(ProcessingProgress("Ошибка", 100, "❌ Ошибка при обработке PDF: ${e.message}"))
         }
-    }
-    
-    private fun processAndLearnText(text: String, onProgress: ((Int, Int) -> Unit)? = null): Int {
-        // Разбиваем текст на предложения для обучения
-        val sentences = text.split('.', '!', '?', '\n')
-            .map { it.trim() }
-            .filter { it.length > 20 && it.length < 500 }
-        
-        var learnedCount = 0
-        val totalToProcess = sentences.size.coerceAtMost(50)
-        
-        sentences.forEachIndexed { index, sentence ->
-            if (learnedCount < 50 && sentence.isNotEmpty()) {
-                val words = sentence.split(' ').filter { it.length > 3 }
-                if (words.size >= 3) {
-                    val keyWords = words.take(3).joinToString(" ")
-                    knowledgeManager.learn(keyWords, sentence)
-                    learnedCount++
-                    
-                    onProgress?.invoke(index + 1, totalToProcess)
-                }
-            }
-        }
-        
-        return learnedCount
     }
     
     fun extractKeyFactsFromPDF(pdfUri: Uri): Flow<ProcessingProgress> = flow {
