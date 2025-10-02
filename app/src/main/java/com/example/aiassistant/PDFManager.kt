@@ -23,51 +23,70 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
         try {
             val contentResolver: ContentResolver = context.contentResolver
             
-            // Все IO операции в withContext
+            // Открываем файл в IO потоке
             val inputStream = withContext(Dispatchers.IO) {
-                contentResolver.openInputStream(pdfUri)
+                try {
+                    contentResolver.openInputStream(pdfUri)
+                } catch (e: Exception) {
+                    null
+                }
             }
             
             if (inputStream != null) {
                 emit(ProcessingProgress("Чтение файла", 20, "Читаю содержимое PDF..."))
                 
+                // Читаем текст в IO потоке
                 val text = withContext(Dispatchers.IO) {
                     try {
                         inputStream.bufferedReader().use { it.readText() }
                     } catch (e: Exception) {
-                        ""
-                    } finally {
-                        inputStream.close()
+                        "Ошибка чтения: ${e.message}"
                     }
                 }
                 
-                if (text.isNotEmpty()) {
+                // Закрываем поток
+                withContext(Dispatchers.IO) {
+                    try {
+                        inputStream.close()
+                    } catch (e: Exception) {
+                        // Игнорируем ошибку закрытия
+                    }
+                }
+                
+                if (text.isNotEmpty() && !text.startsWith("Ошибка")) {
                     emit(ProcessingProgress("Анализ текста", 40, "Анализирую текст (${text.length} символов)..."))
                     
-                    val totalSentences = text.split('.', '!', '?', '\n').size
-                    emit(ProcessingProgress("Извлечение знаний", 60, "Найдено $totalSentences предложений..."))
-                    
-                    // Обрабатываем текст и изучаем факты
-                    var learnedCount = 0
+                    // Обрабатываем текст
                     val sentences = text.split('.', '!', '?', '\n')
                         .map { it.trim() }
-                        .filter { it.length > 20 && it.length < 500 }
+                        .filter { it.length > 10 && it.length < 300 }
                     
-                    val totalToProcess = sentences.size.coerceAtMost(50)
+                    val totalSentences = sentences.size
+                    emit(ProcessingProgress("Извлечение знаний", 60, "Найдено $totalSentences предложений..."))
                     
+                    var learnedCount = 0
+                    val totalToProcess = sentences.size.coerceAtMost(30) // Ограничиваем для скорости
+                    
+                    // Изучаем предложения
                     sentences.forEachIndexed { index, sentence ->
-                        if (learnedCount < 50 && sentence.isNotEmpty()) {
-                            val words = sentence.split(' ').filter { it.length > 3 }
-                            if (words.size >= 3) {
-                                val keyWords = words.take(3).joinToString(" ")
-                                knowledgeManager.learn(keyWords, sentence)
-                                learnedCount++
-                                
+                        if (learnedCount < 30 && sentence.isNotEmpty()) {
+                            val words = sentence.split(' ').filter { it.length > 2 }
+                            if (words.size >= 2) {
+                                // Создаем простой вопрос из первых слов
+                                val keyWords = words.take(2).joinToString(" ")
+                                if (keyWords.length > 3) {
+                                    knowledgeManager.learn(keyWords, sentence)
+                                    learnedCount++
+                                }
+                            }
+                            
+                            // Обновляем прогресс каждые 5 предложений
+                            if (index % 5 == 0) {
                                 val progress = 60 + (index * 30 / totalToProcess)
                                 emit(ProcessingProgress(
                                     "Обучение", 
-                                    progress, 
-                                    "Изучаю предложение ${index + 1} из $totalToProcess..."
+                                    progress.coerceIn(60, 90), 
+                                    "Обработано ${index + 1} из $totalToProcess предложений..."
                                 ))
                             }
                         }
@@ -81,7 +100,7 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
                 emit(ProcessingProgress("Ошибка", 100, "❌ Не удалось открыть PDF файл."))
             }
         } catch (e: Exception) {
-            emit(ProcessingProgress("Ошибка", 100, "❌ Ошибка при обработке PDF: ${e.message}"))
+            emit(ProcessingProgress("Ошибка", 100, "❌ Ошибка при обработке PDF: ${e.message ?: "Неизвестная ошибка"}"))
         }
     }
     
@@ -92,7 +111,11 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
             val contentResolver: ContentResolver = context.contentResolver
             
             val inputStream = withContext(Dispatchers.IO) {
-                contentResolver.openInputStream(pdfUri)
+                try {
+                    contentResolver.openInputStream(pdfUri)
+                } catch (e: Exception) {
+                    null
+                }
             }
             
             if (inputStream != null) {
@@ -104,7 +127,11 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
                     } catch (e: Exception) {
                         ""
                     } finally {
-                        inputStream.close()
+                        try {
+                            inputStream.close()
+                        } catch (e: Exception) {
+                            // Игнорируем
+                        }
                     }
                 }
                 
@@ -116,7 +143,7 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
                         emit(ProcessingProgress("Форматирование", 90, "Форматирую найденные факты..."))
                         
                         val result = "📚 **Ключевые факты из PDF:**\n\n" + 
-                                   facts.take(10).joinToString("\n\n") +
+                                   facts.take(5).joinToString("\n\n") +
                                    "\n\n*Найдено ${facts.size} ключевых фактов*"
                         
                         emit(ProcessingProgress("Завершение", 100, result))
@@ -135,20 +162,24 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
     }
     
     private fun extractImportantFacts(text: String): List<String> {
-        val sentences = text.split('.', '!', '?')
-            .map { it.trim() }
-            .filter { it.length > 30 && it.length < 200 }
-        
-        val keyWords = listOf("определение", "это", "значит", "следовательно", "таким образом", 
-                             "важно", "ключевой", "основной", "главный", "вывод", "результат")
-        
-        return sentences
-            .filter { sentence ->
-                keyWords.any { keyword -> 
-                    sentence.contains(keyword, ignoreCase = true) 
-                } || sentence.split(' ').size in 8..20
-            }
-            .take(15)
+        return try {
+            val sentences = text.split('.', '!', '?')
+                .map { it.trim() }
+                .filter { it.length > 20 && it.length < 150 }
+            
+            val keyWords = listOf("определение", "это", "значит", "следовательно", "таким образом", 
+                                 "важно", "ключевой", "основной", "главный")
+            
+            sentences
+                .filter { sentence ->
+                    keyWords.any { keyword -> 
+                        sentence.contains(keyword, ignoreCase = true) 
+                    } || sentence.split(' ').size in 5..15
+                }
+                .take(10)
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
     
     fun getPDFStats(pdfUri: Uri): Flow<ProcessingProgress> = flow {
@@ -158,7 +189,11 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
             val contentResolver: ContentResolver = context.contentResolver
             
             val inputStream = withContext(Dispatchers.IO) {
-                contentResolver.openInputStream(pdfUri)
+                try {
+                    contentResolver.openInputStream(pdfUri)
+                } catch (e: Exception) {
+                    null
+                }
             }
             
             if (inputStream != null) {
@@ -170,22 +205,25 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
                     } catch (e: Exception) {
                         ""
                     } finally {
-                        inputStream.close()
+                        try {
+                            inputStream.close()
+                        } catch (e: Exception) {
+                            // Игнорируем
+                        }
                     }
                 }
                 
                 if (text.isNotEmpty()) {
                     val charCount = text.length
-                    val wordCount = text.split(Regex("\\s+")).size
-                    val sentenceCount = text.split('.', '!', '?').size
-                    val paragraphCount = text.split("\n\n").size
+                    val wordCount = text.split(Regex("\\s+")).count { it.isNotEmpty() }
+                    val sentenceCount = text.split('.', '!', '?').count { it.trim().isNotEmpty() }
+                    val paragraphCount = text.split("\n\n").count { it.trim().isNotEmpty() }
                     
                     val stats = "📊 **Статистика PDF:**\n\n" +
                                "• Символов: $charCount\n" +
                                "• Слов: $wordCount\n" +
                                "• Предложений: $sentenceCount\n" +
-                               "• Абзацев: $paragraphCount\n" +
-                               "• Плотность информации: ${"%.1f".format(wordCount.toDouble() / sentenceCount)} слов/предложение"
+                               "• Абзацев: $paragraphCount"
                     
                     emit(ProcessingProgress("Завершение", 100, stats))
                 } else {
