@@ -41,10 +41,10 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'com.google.code.gson:gson:2.10.1'
-
-    // ДЛЯ КОРОУТИН И ПОТОКОВ
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     
+    // КОРУТИНЫ - ОБЯЗАТЕЛЬНО!
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
     // ДЛЯ ПОИСКА В ИНТЕРНЕТЕ
     implementation 'org.jsoup:jsoup:1.17.1'
     
