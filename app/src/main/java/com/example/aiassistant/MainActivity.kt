@@ -7,6 +7,7 @@ import android.speech.RecognizerIntent
 import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -315,12 +316,10 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun showVoiceSettings() {
-        // Настройки голоса будут реализованы позже
         showToast("Настройки голоса в разработке")
     }
     
     private fun showLanguageSettings() {
-        // Настройки языка будут реализованы позже  
         showToast("Настройки языка в разработке")
     }
     
@@ -392,9 +391,27 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         voiceManager.shutdown()
     }
+    
+    // === МЕТОДЫ ДЛЯ БЫСТРЫХ КОМАНД ===
+    
+    /**
+     * Обработчик нажатия на быстрые команды внизу экрана
+     */
+    fun onQuickCommandClick(view: View) {
+        val command = view.tag as? String ?: return
+        processUserInput(command, isVoiceInput = false)
+    }
+    
+    /**
+     * Обработчик нажатия на кнопку помощи
+     */
+    fun onHelpClick(view: View) {
+        val helpMessage = commandProcessor.processCommand("помощь")
+        handleCommandResult(helpMessage)
+    }
 }
 
-// Обновляем модель данных
+// Модель данных для сообщений
 data class ChatMessage(
     val message: String,
     val isAI: Boolean,
