@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -50,7 +49,7 @@
         android:layout_height="wrap_content"
         android:text="🎤 Слушаю..."
         android:gravity="center"
-        android:background="@drawable/voice_indicator_bg"
+        android:background="#4CAF50"
         android:textColor="#FFFFFF"
         android:textSize="16sp"
         android:padding="12dp"
@@ -74,8 +73,7 @@
             android:src="@drawable/ic_mic"
             android:background="@drawable/voice_button_bg"
             android:layout_marginEnd="8dp"
-            android:contentDescription="Голосовой ввод"
-            android:tooltipText="Нажмите для голосового ввода, удерживайте для быстрых команд" />
+            android:contentDescription="Голосовой ввод" />
 
         <!-- Поле ввода текста -->
         <EditText
@@ -130,8 +128,7 @@
             android:textColor="#666666"
             android:background="@drawable/help_button_bg"
             android:layout_marginStart="6dp"
-            android:textSize="14sp"
-            android:onClick="onHelpClick" />
+            android:textSize="14sp" />
 
     </LinearLayout>
 
@@ -195,18 +192,6 @@
             android:layout_marginStart="4dp"
             android:onClick="onQuickCommandClick"
             android:tag="Расскажи шутку" />
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="28dp"
-            android:text="📚 Факт"
-            android:textSize="10sp"
-            android:background="@drawable/quick_command_bg"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:layout_marginStart="4dp"
-            android:onClick="onQuickCommandClick"
-            android:tag="Интересный факт" />
 
     </LinearLayout>
 
