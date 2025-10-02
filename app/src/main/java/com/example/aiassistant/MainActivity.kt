@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private val reminders = mutableListOf<String>()
     private var lastUserMessage = ""
     private var lastAIResponse = ""
+    private var waitingForFeedback = false
 
     // Регистрация для распознавания речи
     private val speechRecognizer = registerForActivityResult(
@@ -113,6 +114,12 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun sendMessage(message: String) {
+        // Обрабатываем обратную связь
+        if (waitingForFeedback) {
+            handleFeedback(message)
+            return
+        }
+        
         // Сохраняем сообщение пользователя
         lastUserMessage = message
         
@@ -135,10 +142,44 @@ class MainActivity : AppCompatActivity() {
                 progressBar.visibility = View.GONE
                 val response = generateAIResponse(message)
                 lastAIResponse = response
-                addAIResponse(response)
+                addAIResponse(response, true)
             }, 1000)
         }
         
+        scrollToBottom()
+    }
+    
+    private fun handleFeedback(message: String) {
+        when (message.lowercase()) {
+            "да", "👍" -> {
+                knowledgeManager.learn(lastUserMessage, lastAIResponse)
+                addAIResponse("✅ Спасибо за обратную связь! Запомнил этот ответ как полезный. 🧠", false)
+            }
+            "нет", "👎" -> {
+                knowledgeManager.improveAnswer(lastUserMessage, false)
+                addAIResponse("❌ Понял, что ответ был не полезен. Учту это в будущем. " +
+                        "Вы можете научить меня правильному ответу: 'Запомни, что $lastUserMessage - это [правильный ответ]'", false)
+            }
+            "не важно", "🤷" -> {
+                addAIResponse("Хорошо, продолжаем общение! 😊", false)
+            }
+            else -> {
+                // Если это не обратная связь, обрабатываем как обычное сообщение
+                lastUserMessage = message
+                val userMessage = ChatMessage(message, false)
+                chatMessages.add(userMessage)
+                chatAdapter.notifyItemInserted(chatMessages.size - 1)
+                
+                progressBar.visibility = View.VISIBLE
+                handler.postDelayed({
+                    progressBar.visibility = View.GONE
+                    val response = generateAIResponse(message)
+                    lastAIResponse = response
+                    addAIResponse(response, true)
+                }, 1000)
+            }
+        }
+        waitingForFeedback = false
         scrollToBottom()
     }
     
@@ -171,13 +212,13 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     lastAIResponse = response
-                    addAIResponse(response)
+                    addAIResponse(response, true)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     lastAIResponse = "❌ Ошибка при поиске информации: ${e.message ?: "Неизвестная ошибка"}"
-                    addAIResponse(lastAIResponse)
+                    addAIResponse(lastAIResponse, true)
                 }
             }
         }
@@ -197,16 +238,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun addAIResponse(response: String) {
+    private fun addAIResponse(response: String, showFeedback: Boolean) {
         val aiMessage = ChatMessage(response, true)
         chatMessages.add(aiMessage)
         chatAdapter.notifyItemInserted(chatMessages.size - 1)
         
         // Добавляем кнопки обратной связи для обучения
-        if (!response.contains("❌") && !response.contains("⚠️") && 
+        if (showFeedback && !response.contains("❌") && !response.contains("⚠️") && 
             !response.contains("помощь") && !response.contains("команды") &&
-            lastUserMessage.isNotEmpty()) {
+            lastUserMessage.isNotEmpty() && !lastUserMessage.contains("запомни")) {
             addFeedbackButtons()
+            waitingForFeedback = true
         }
         
         // Озвучиваем ответ если включено
@@ -277,19 +319,6 @@ class MainActivity : AppCompatActivity() {
             
             message.contains("забудь") -> {
                 handleForgetCommand(userMessage)
-            }
-            
-            // Обратная связь
-            message == "да" || message == "👍" -> {
-                handlePositiveFeedback()
-            }
-            
-            message == "нет" || message == "👎" -> {
-                handleNegativeFeedback()
-            }
-            
-            message == "не важно" || message == "🤷" -> {
-                "Хорошо, продолжаем общение! 😊"
             }
             
             // Время
@@ -475,21 +504,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun handlePositiveFeedback() {
-        if (lastUserMessage.isNotEmpty() && lastAIResponse.isNotEmpty()) {
-            knowledgeManager.learn(lastUserMessage, lastAIResponse)
-            addAIResponse("✅ Спасибо за обратную связь! Запомнил этот ответ как полезный. 🧠")
-        }
-    }
-    
-    private fun handleNegativeFeedback() {
-        if (lastUserMessage.isNotEmpty()) {
-            knowledgeManager.improveAnswer(lastUserMessage, false)
-            addAIResponse("❌ Понял, что ответ был не полезен. Учту это в будущем. " +
-                        "Вы можете научить меня правильному ответу: 'Запомни, что $lastUserMessage - это [правильный ответ]'")
-        }
-    }
-    
     private fun handleAlarmCommand(message: String): String {
         val time = alarmManager.parseTimeFromText(message)
         return if (time != null) {
@@ -641,6 +655,7 @@ class MainActivity : AppCompatActivity() {
     private fun clearChat() {
         chatMessages.clear()
         chatAdapter.notifyDataSetChanged()
+        waitingForFeedback = false
     }
     
     private fun scrollToBottom() {
