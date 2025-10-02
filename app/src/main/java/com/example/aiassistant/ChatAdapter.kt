@@ -9,21 +9,12 @@ import androidx.recyclerview.widget.RecyclerView
 class ChatAdapter(private val messages: List<ChatMessage>) : 
     RecyclerView.Adapter<ChatAdapter.MessageViewHolder>() {
     
-    companion object {
-        private const val TYPE_USER = 0
-        private const val TYPE_AI = 1
-    }
-    
-    override fun getItemViewType(position: Int): Int {
-        return if (messages[position].isAI) TYPE_AI else TYPE_USER
-    }
-    
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
-        val layout = when (viewType) {
-            TYPE_AI -> R.layout.item_message_ai
-            else -> R.layout.item_message_user
-        }
-        val view = LayoutInflater.from(parent.context).inflate(layout, parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(
+            if (messages[0].isAI) R.layout.item_message_ai else R.layout.item_message_user, 
+            parent, 
+            false
+        )
         return MessageViewHolder(view)
     }
     
@@ -34,9 +25,8 @@ class ChatAdapter(private val messages: List<ChatMessage>) :
     override fun getItemCount(): Int = messages.size
     
     class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val textMessage: TextView = itemView.findViewById(R.id.textMessage)
-        
         fun bind(chatMessage: ChatMessage) {
+            val textMessage: TextView = itemView.findViewById(R.id.textMessage)
             textMessage.text = chatMessage.message
         }
     }
