@@ -135,35 +135,43 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun handleSearchQuery(message: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val response = when {
-                    message.contains("новости") -> {
-                        val topic = extractSearchQuery(message, "новости")
-                        webSearchManager.getNews(topic)
-                    }
-                    message.contains("что такое") || message.contains("кто такой") -> {
-                        val query = extractSearchQuery(message, listOf("что такое", "кто такой"))
-                        webSearchManager.getQuickAnswer(query)
-                    }
-                    else -> {
-                        val query = extractSearchQuery(message, listOf("найди", "поиск", "найти"))
-                        webSearchManager.searchWeb(query)
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val response = when {
+                message.contains("погода") -> {
+                    val city = extractSearchQuery(message, "погода")
+                    if (city.isNotEmpty() && city != message) {
+                        webSearchManager.getWeather(city)
+                    } else {
+                        webSearchManager.getWeather()
                     }
                 }
-                
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    addAIResponse(response)
+                message.contains("новости") -> {
+                    val topic = extractSearchQuery(message, "новости")
+                    webSearchManager.getNews(topic)
                 }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    addAIResponse("❌ Ошибка поиска: ${e.message}")
+                message.contains("что такое") || message.contains("кто такой") -> {
+                    val query = extractSearchQuery(message, listOf("что такое", "кто такой"))
+                    webSearchManager.getQuickAnswer(query)
                 }
+                else -> {
+                    val query = extractSearchQuery(message, listOf("найди", "поиск", "найти"))
+                    webSearchManager.searchWeb(query)
+                }
+            }
+            
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                addAIResponse(response)
+            }
+        } catch (e: Exception) {
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                addAIResponse("❌ Ошибка при поиске информации. Попробуйте другой запрос.\n\nОшибка: ${e.message}")
             }
         }
     }
+}
     
     private fun extractSearchQuery(message: String, keywords: Any): String {
         return when (keywords) {
