@@ -23,12 +23,47 @@
         android:layout_weight="1"
         android:layout_marginBottom="16dp" />
 
+    <!-- Панель прогресса -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp">
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:max="100" />
+
+        <TextView
+            android:id="@+id/progressText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Обработка..."
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+
     <!-- Панель ввода -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
+
+        <!-- Кнопка выбора файла -->
+        <Button
+            android:id="@+id/buttonFile"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:text="📁"
+            android:textSize="18sp"
+            android:layout_marginEnd="8dp" />
 
         <!-- Кнопка микрофона -->
         <ImageButton
@@ -37,15 +72,6 @@
             android:layout_height="48dp"
             android:src="@android:drawable/ic_btn_speak_now"
             android:background="@android:color/transparent"
-            android:layout_marginEnd="8dp" />
-        
-        <!-- Кнопка выбора файла -->
-        <Button
-            android:id="@+id/buttonFile"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:text="📁"
-            android:textSize="18sp"
             android:layout_marginEnd="8dp" />
 
         <!-- Поле ввода текста -->
@@ -82,14 +108,5 @@
             android:text="Очистить чат" />
 
     </LinearLayout>
-
-    <!-- Индикатор загрузки -->
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="gone"
-        android:layout_marginTop="8dp" />
 
 </LinearLayout>
