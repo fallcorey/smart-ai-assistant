@@ -1,89 +1,184 @@
 package com.example.aiassistant
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.provider.AlarmClock
+import android.os.Build
+import android.os.SystemClock
 import java.util.*
 
 class AlarmManager(private val context: Context) {
     
+    private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    private val sharedPreferences = context.getSharedPreferences("ai_assistant_alarms", Context.MODE_PRIVATE)
+    
+    // Внутреннее хранилище для будильников
+    private val alarms = mutableListOf<AlarmItem>()
+    
+    data class AlarmItem(
+        val id: Int,
+        val time: String,
+        val message: String,
+        val enabled: Boolean
+    )
+    
     fun setAlarm(hours: Int, minutes: Int, message: String = "Будильник от AI помощника"): String {
         return try {
-            val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-                putExtra(AlarmClock.EXTRA_HOUR, hours)
-                putExtra(AlarmClock.EXTRA_MINUTES, minutes)
-                putExtra(AlarmClock.EXTRA_MESSAGE, message)
-                putExtra(AlarmClock.EXTRA_SKIP_UI, true) // Пытаемся установить без интерфейса
-            }
+            val timeString = String.format("%02d:%02d", hours, minutes)
+            val id = System.currentTimeMillis().toInt()
             
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
-                "Будильник установлен на ${formatTime(hours, minutes)}"
-            } else {
-                "Открываю приложение Часы для установки будильника на ${formatTime(hours, minutes)}"
-            }
+            val alarmItem = AlarmItem(id, timeString, message, true)
+            alarms.add(alarmItem)
+            saveAlarms()
+            
+            // Создаем отложенный интент для уведомления
+            scheduleNotification(hours, minutes, message, id)
+            
+            "✅ Будильник установлен на $timeString: $message"
         } catch (e: Exception) {
-            "Открываю приложение Часы. Установите будильник на ${formatTime(hours, minutes)}"
+            "❌ Не удалось установить будильник"
         }
     }
     
-    fun setTimer(seconds: Int, message: String = "Таймер от AI помощника"): String {
+    fun setTimer(minutes: Int, message: String = "Таймер от AI помощника"): String {
         return try {
-            val intent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
-                putExtra(AlarmClock.EXTRA_LENGTH, seconds)
-                putExtra(AlarmClock.EXTRA_MESSAGE, message)
-                putExtra(AlarmClock.EXTRA_SKIP_UI, true) // Пытаемся установить без интерфейса
+            val id = System.currentTimeMillis().toInt()
+            val triggerTime = SystemClock.elapsedRealtime() + minutes * 60 * 1000
+            
+            val intent = Intent(context, TimerReceiver::class.java).apply {
+                putExtra("message", message)
+                putExtra("id", id)
             }
             
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
-                val minutes = seconds / 60
-                val remainingSeconds = seconds % 60
-                if (minutes > 0) {
-                    "Таймер установлен на $minutes минут${if (remainingSeconds > 0) " $remainingSeconds секунд" else ""}"
-                } else {
-                    "Таймер установлен на $seconds секунд"
-                }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                id,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerTime,
+                    pendingIntent
+                )
             } else {
-                "Открываю приложение Часы для установки таймера"
+                alarmManager.setExact(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerTime,
+                    pendingIntent
+                )
             }
+            
+            "✅ Таймер установлен на $minutes минут: $message"
         } catch (e: Exception) {
-            "Открываю приложение Часы. Установите таймер"
+            "❌ Не удалось установить таймер"
         }
     }
     
-    fun showAlarms() {
+    private fun scheduleNotification(hours: Int, minutes: Int, message: String, id: Int) {
         try {
-            val intent = Intent(AlarmClock.ACTION_SHOW_ALARMS)
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
+            val calendar = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, hours)
+                set(Calendar.MINUTE, minutes)
+                set(Calendar.SECOND, 0)
+                
+                // Если время уже прошло сегодня, устанавливаем на завтра
+                if (timeInMillis <= System.currentTimeMillis()) {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                }
+            }
+            
+            val intent = Intent(context, AlarmReceiver::class.java).apply {
+                putExtra("message", message)
+                putExtra("id", id)
+            }
+            
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                id,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.timeInMillis,
+                    pendingIntent
+                )
             }
         } catch (e: Exception) {
-            // Игнорируем ошибку
+            e.printStackTrace()
         }
     }
     
-    fun showTimers() {
-        try {
-            val intent = Intent(AlarmClock.ACTION_SHOW_TIMERS)
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
+    fun getAlarms(): List<AlarmItem> {
+        return alarms.toList()
+    }
+    
+    fun cancelAlarm(id: Int) {
+        alarms.removeAll { it.id == id }
+        saveAlarms()
+        
+        // Отменяем pending intent
+        val intent = Intent(context, AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            id,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+    }
+    
+    fun cancelTimer(id: Int) {
+        val intent = Intent(context, TimerReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            id,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+    }
+    
+    private fun saveAlarms() {
+        val alarmsString = alarms.joinToString("|") { "${it.id},${it.time},${it.message},${it.enabled}" }
+        sharedPreferences.edit().putString("alarms", alarmsString).apply()
+    }
+    
+    fun loadAlarms() {
+        val alarmsString = sharedPreferences.getString("alarms", "") ?: ""
+        if (alarmsString.isNotEmpty()) {
+            alarms.clear()
+            alarmsString.split("|").forEach { alarmStr ->
+                val parts = alarmStr.split(",")
+                if (parts.size == 4) {
+                    alarms.add(AlarmItem(parts[0].toInt(), parts[1], parts[2], parts[3].toBoolean()))
+                }
             }
-        } catch (e: Exception) {
-            // Игнорируем ошибку
         }
     }
     
     fun parseTimeFromText(text: String): Pair<Int, Int>? {
         val lowercaseText = text.lowercase()
         
-        // Паттерны для распознавания времени
         val patterns = listOf(
             Regex("""(\d{1,2})[:.](\d{1,2})"""),  // 12:30 или 12.30
             Regex("""(\d{1,2})\s*часов?\s*(\d{1,2})?"""),  // 12 часов 30
             Regex("""в\s*(\d{1,2})"""),  // в 12
             Regex("""(\d{1,2})\s*час\s*(\d{1,2})?"""),  // 12 час 30
-            Regex("""на\s*(\d{1,2})[.:]?(\d{1,2})?""")  // на 12.30
+            Regex("""на\s*(\d{1,2})[.:]?(\d{1,2})?"""),  // на 12.30
+            Regex("""(\d{1,2})\s*[.:]\s*(\d{1,2})""")  // 12.30
         )
         
         for (pattern in patterns) {
@@ -92,7 +187,7 @@ class AlarmManager(private val context: Context) {
                 val hours = match.groupValues[1].toIntOrNull() ?: continue
                 var minutes = match.groupValues.getOrNull(2)?.toIntOrNull() ?: 0
                 
-                // Корректируем время если нужно
+                // Корректируем время
                 val correctedHours = if (hours in 0..23) hours else hours % 24
                 val correctedMinutes = if (minutes in 0..59) minutes else minutes % 60
                 
@@ -114,7 +209,8 @@ class AlarmManager(private val context: Context) {
             Regex("""(\d+)\s*секунд"""), // 30 секунд
             Regex("""таймер\s*на\s*(\d+)"""),  // таймер на 5
             Regex("""(\d+)\s*мин"""),    // 5 мин
-            Regex("""(\d+)\s*ч""")       // 2 ч
+            Regex("""(\d+)\s*ч"""),      // 2 ч
+            Regex("""на\s*(\d+)\s*минут""")  // на 5 минут
         )
         
         for (pattern in patterns) {
@@ -123,28 +219,15 @@ class AlarmManager(private val context: Context) {
                 var duration = match.groupValues[1].toIntOrNull() ?: continue
                 
                 when {
-                    lowercaseText.contains("час") || lowercaseText.contains("ч") -> duration *= 3600
-                    lowercaseText.contains("минут") || lowercaseText.contains("мин") -> duration *= 60
-                    // секунды остаются как есть
+                    lowercaseText.contains("час") || lowercaseText.contains("ч") -> duration *= 60
+                    lowercaseText.contains("секунд") -> duration /= 60
+                    // минуты остаются как есть
                 }
                 
-                // Ограничиваем максимальное время 24 часами
-                return duration.coerceAtMost(86400)
+                // Ограничиваем разумными пределами
+                return duration.coerceIn(1, 1440) // от 1 минуты до 24 часов
             }
         }
         return null
-    }
-    
-    private fun formatTime(hours: Int, minutes: Int): String {
-        return String.format("%02d:%02d", hours, minutes)
-    }
-    
-    // Новый метод для создания напоминаний (простых текстовых)
-    fun createReminder(message: String, delayMinutes: Int = 0): String {
-        return if (delayMinutes > 0) {
-            "Напоминание установлено: '$message' через $delayMinutes минут"
-        } else {
-            "Запомнил: $message"
-        }
     }
 }
