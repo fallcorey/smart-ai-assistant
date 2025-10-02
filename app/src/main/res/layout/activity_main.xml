@@ -1,19 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="#F8F9FA">
 
-    <!-- Заголовок -->
-    <TextView
+    <!-- Заголовок с настройками -->
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="AI Помощник"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🤖 Умный AI Помощник"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#2196F3"
+            android:layout_centerInParent="true" />
+
+        <ImageButton
+            android:id="@+id/buttonSettings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_settings"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_alignParentEnd="true"
+            android:contentDescription="Настройки" />
+
+    </RelativeLayout>
 
     <!-- Список сообщений -->
     <androidx.recyclerview.widget.RecyclerView
@@ -21,14 +39,32 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/chat_background"
+        android:padding="8dp" />
+
+    <!-- Индикатор голосового ввода -->
+    <TextView
+        android:id="@+id/textVoiceStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🎤 Слушаю..."
+        android:gravity="center"
+        android:background="@drawable/voice_indicator_bg"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp" />
 
     <!-- Панель ввода -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:background="@drawable/input_background"
+        android:padding="8dp">
 
         <!-- Кнопка микрофона -->
         <ImageButton
@@ -36,8 +72,10 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/ic_mic"
-            android:background="@android:color/transparent"
-            android:layout_marginEnd="8dp" />
+            android:background="@drawable/voice_button_bg"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Голосовой ввод"
+            android:tooltipText="Нажмите для голосового ввода, удерживайте для быстрых команд" />
 
         <!-- Поле ввода текста -->
         <EditText
@@ -45,17 +83,22 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Введите сообщение..."
-            android:inputType="text"
-            android:padding="12dp" />
+            android:hint="💬 Введите сообщение или команду..."
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="3"
+            android:padding="12dp"
+            android:background="@android:color/transparent"
+            android:textSize="16sp" />
 
         <!-- Кнопка отправки -->
         <Button
             android:id="@+id/buttonSend"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:text="➤"
             android:textSize="18sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/send_button_bg"
             android:layout_marginStart="8dp" />
 
     </LinearLayout>
@@ -65,13 +108,30 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:layout_marginTop="12dp">
 
         <Button
             android:id="@+id/buttonClear"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Очистить чат" />
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="🗑️ Очистить чат"
+            android:textColor="#666666"
+            android:background="@drawable/clear_button_bg"
+            android:layout_marginEnd="6dp"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/buttonHelp"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="❓ Помощь"
+            android:textColor="#666666"
+            android:background="@drawable/help_button_bg"
+            android:layout_marginStart="6dp"
+            android:textSize="14sp"
+            android:onClick="onHelpClick" />
 
     </LinearLayout>
 
@@ -82,6 +142,60 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:visibility="gone"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="16dp"
+        android:indeterminateTint="#2196F3" />
+
+    <!-- Быстрый доступ к командам -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🚀 Быстрые команды:"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:text="🕐 Время"
+            android:textSize="10sp"
+            android:background="@drawable/quick_command_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:onClick="onQuickCommandClick"
+            android:tag="Который час?" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:text="📅 Дата"
+            android:textSize="10sp"
+            android:background="@drawable/quick_command_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:layout_marginStart="4dp"
+            android:onClick="onQuickCommandClick"
+            android:tag="Какое число?" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:text="😂 Шутка"
+            android:textSize="10sp"
+            android:background="@drawable/quick_command_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:layout_marginStart="4dp"
+            android:onClick="onQuickCommandClick"
+            android:tag="Расскажи шутку" />
+
+    </LinearLayout>
 
 </LinearLayout>
