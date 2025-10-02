@@ -1,9 +1,24 @@
 <resources>
-    <string name="app_name">Умный AI Помощник</string>
-    <string name="hint_message">Введите сообщение или нажмите микрофон...</string>
+    <string name="app_name">🤖 Умный AI Помощник</string>
+    <string name="hint_message">💬 Введите сообщение или команду...</string>
     <string name="send">Отправить</string>
-    <string name="speak">Говорите...</string>
-    <string name="clear_chat">Очистить чат</string>
-    <string name="search_web">Поиск в интернете</string>
+    <string name="speak">🎤 Говорите...</string>
+    <string name="clear_chat">🗑️ Очистить чат</string>
+    <string name="help">❓ Помощь</string>
+    <string name="settings">⚙️ Настройки</string>
     <string name="voice_input">Голосовой ввод</string>
+    <string name="quick_commands">🚀 Быстрые команды</string>
+    
+    <!-- Быстрые команды -->
+    <string name="quick_time">🕐 Время</string>
+    <string name="quick_date">📅 Дата</string>
+    <string name="quick_joke">😂 Шутка</string>
+    <string name="quick_fact">📚 Факт</string>
+    <string name="quick_weather">🌤️ Погода</string>
+    <string name="quick_calc">📊 Калькулятор</string>
+    
+    <!-- Настройки -->
+    <string name="settings_voice">🔊 Голосовые ответы</string>
+    <string name="settings_language">🌍 Язык</string>
+    <string name="settings_about">ℹ️ О приложении</string>
 </resources>
