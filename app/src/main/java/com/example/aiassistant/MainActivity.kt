@@ -16,6 +16,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonClear: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var buttonFile: Button
+    private lateinit var progressText: TextView
     
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
@@ -45,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private var lastUserMessage = ""
     private var lastAIResponse = ""
     private var waitingForFeedback = false
+    private var isProcessingPDF = false
 
     // Регистрация для распознавания речи
     private val speechRecognizer = registerForActivityResult(
@@ -98,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         buttonClear = findViewById(R.id.buttonClear)
         progressBar = findViewById(R.id.progressBar)
         buttonFile = findViewById(R.id.buttonFile)
+        progressText = findViewById(R.id.progressText)
     }
     
     private fun setupRecyclerView() {
@@ -127,7 +132,11 @@ class MainActivity : AppCompatActivity() {
         }
         
         buttonFile.setOnClickListener {
-            openFilePicker()
+            if (!isProcessingPDF) {
+                openFilePicker()
+            } else {
+                Toast.makeText(this, "Дождитесь завершения обработки текущего файла", Toast.LENGTH_SHORT).show()
+            }
         }
     }
     
@@ -136,22 +145,55 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun handleFileSelection(uri: Uri) {
+        isProcessingPDF = true
+        buttonFile.isEnabled = false
         progressBar.visibility = View.VISIBLE
-        addAIResponse("📖 Обрабатываю PDF файл...", false)
+        progressText.visibility = View.VISIBLE
+        progressText.text = "Подготовка к обработке PDF..."
+        
+        addAIResponse("📖 Начинаю обработку PDF файла...", false)
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val result = pdfManager.learnFromPDF(uri)
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    addAIResponse(result, false)
-                }
+                pdfManager.learnFromPDF(uri)
+                    .onEach { progress ->
+                        runOnUiThread {
+                            updateProgress(progress)
+                        }
+                    }
+                    .collect { progress ->
+                        if (progress.progress == 100) {
+                            runOnUiThread {
+                                progressBar.visibility = View.GONE
+                                progressText.visibility = View.GONE
+                                buttonFile.isEnabled = true
+                                isProcessingPDF = false
+                                addAIResponse(progress.message, false)
+                            }
+                        }
+                    }
             } catch (e: Exception) {
                 runOnUiThread {
                     progressBar.visibility = View.GONE
+                    progressText.visibility = View.GONE
+                    buttonFile.isEnabled = true
+                    isProcessingPDF = false
                     addAIResponse("❌ Ошибка при обработке файла: ${e.message}", false)
                 }
             }
+        }
+    }
+    
+    private fun updateProgress(progress: PDFManager.ProcessingProgress) {
+        progressBar.progress = progress.progress
+        progressText.text = "${progress.step}: ${progress.progress}% - ${progress.message}"
+        
+        // Обновляем последнее сообщение с прогрессом
+        if (progress.progress < 100) {
+            if (chatMessages.isNotEmpty() && chatMessages.last().isAI) {
+                chatMessages.removeAt(chatMessages.size - 1)
+            }
+            addAIResponse("🔄 ${progress.step}: ${progress.progress}%\n${progress.message}", false)
         }
     }
     
@@ -172,17 +214,21 @@ class MainActivity : AppCompatActivity() {
         
         // Показываем прогресс
         progressBar.visibility = View.VISIBLE
+        progressText.visibility = View.VISIBLE
+        progressText.text = "Обработка запроса..."
         
         // Обрабатываем сообщение
         if (message.contains("найди") || message.contains("поиск") || message.contains("что такое") || 
             message.contains("кто такой") || message.contains("новости") || message.contains("погода") ||
-            message.contains("проанализируй pdf") || message.contains("факты из pdf")) {
+            message.contains("проанализируй pdf") || message.contains("факты из pdf") ||
+            message.contains("статистика pdf")) {
             // Поисковые запросы обрабатываем в отдельном потоке
             handleSearchQuery(message)
         } else {
             // Обычные сообщения обрабатываем локально
             handler.postDelayed({
                 progressBar.visibility = View.GONE
+                progressText.visibility = View.GONE
                 val response = generateAIResponse(message)
                 lastAIResponse = response
                 addAIResponse(response, true)
@@ -214,8 +260,11 @@ class MainActivity : AppCompatActivity() {
                 chatAdapter.notifyItemInserted(chatMessages.size - 1)
                 
                 progressBar.visibility = View.VISIBLE
+                progressText.visibility = View.VISIBLE
+                progressText.text = "Обработка запроса..."
                 handler.postDelayed({
                     progressBar.visibility = View.GONE
+                    progressText.visibility = View.GONE
                     val response = generateAIResponse(message)
                     lastAIResponse = response
                     addAIResponse(response, true)
@@ -254,12 +303,14 @@ class MainActivity : AppCompatActivity() {
                 
                 runOnUiThread {
                     progressBar.visibility = View.GONE
+                    progressText.visibility = View.GONE
                     lastAIResponse = response
                     addAIResponse(response, true)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     progressBar.visibility = View.GONE
+                    progressText.visibility = View.GONE
                     lastAIResponse = "❌ Ошибка при поиске информации: ${e.message ?: "Неизвестная ошибка"}"
                     addAIResponse(lastAIResponse, true)
                 }
@@ -316,7 +367,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun prepareTextForSpeech(text: String): String {
         return text
-            .replace(Regex("[🎯🕐📅📆⏰💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉🎤🌤️ℹ️✅❌🔍⏰⏱️🔔📋📰🔍🎯⚠️❌ℹ️🌧️❄️🌥️🌤️🤔👍👎🤷📊🧠📖📚🔍]"), "")
+            .replace(Regex("[🎯🕐📅📆⏰💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉🎤🌤️ℹ️✅❌🔍⏰⏱️🔔📋📰🔍🎯⚠️❌ℹ️🌧️❄️🌥️🌤️🤔👍👎🤷📊🧠📖📚🔍🔄📊]"), "")
             .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
             .replace(Regex("\\*(.*?)\\*"), "$1")
             .replace("•", " - ")
@@ -371,6 +422,10 @@ class MainActivity : AppCompatActivity() {
             
             message.contains("анализируй pdf") || message.contains("проанализируй pdf") -> {
                 "Нажмите кнопку '📁 Файл' для выбора PDF файла для анализа"
+            }
+            
+            message.contains("статистика pdf") || message.contains("анализ pdf") -> {
+                "Нажмите кнопку '📁 Файл' для выбора PDF файла и получения статистики"
             }
             
             // Время
@@ -440,7 +495,7 @@ class MainActivity : AppCompatActivity() {
 
 • 💬 **Общение:** Привет, Как дела, Спасибо
 • 🧠 **Обучение:** Запомни что..., Что ты знаешь, Забудь...
-• 📖 **PDF файлы:** Загрузи PDF, Анализируй PDF
+• 📖 **PDF файлы:** Загрузи PDF, Анализируй PDF, Статистика PDF
 • 🕐 **Время и дата:** Время, Дата, День недели  
 • 😂 **Развлечения:** Расскажи шутку
 • 📊 **Расчеты:** Посчитай 2+2
@@ -675,12 +730,12 @@ class MainActivity : AppCompatActivity() {
     private fun addWelcomeMessage() {
         val welcomeMessage = ChatMessage(
             "🎉 Добро пожаловать в Умный AI Помощник!\n\n" +
-            "Теперь я могу **читать PDF файлы**! 📖\n\n" +
+            "Теперь я могу **читать PDF файлы с прогрессом**! 📖🔄\n\n" +
             "Новые возможности:\n" +
             "• 💬 Отвечать на вопросы\n" +
             "• 🧠 Запоминать новые ответы\n" +
             "• 📖 Читать и учиться из PDF\n" +
-            "• 📊 Улучшаться с вашей помощью\n" +
+            "• 📊 **Визуальный прогресс обработки**\n" +
             "• 🎤 Распознавать голос\n" +
             "• 🔊 Озвучивать ответы\n" +
             "• 🕐 Сообщать время и дату\n" +
@@ -695,13 +750,13 @@ class MainActivity : AppCompatActivity() {
             "**Как использовать PDF:**\n" +
             "1. Нажмите кнопку '📁 Файл'\n" +
             "2. Выберите PDF файл\n" +
-            "3. Я извлеку знания автоматически!\n\n" +
+            "3. **Следите за прогрессом в реальном времени!**\n\n" +
             "**Примеры команд:**\n" +
             "• 'Запомни, что кошки - это животные'\n" +
             "• 'Что ты знаешь?' (статистика)\n" +
             "• 'Загрузи PDF'\n" +
-            "• 'Найди кошки'\n" +
-            "• 'Что такое AI'",
+            "• 'Статистика PDF'\n" +
+            "• 'Найди кошки'",
             true
         )
         chatMessages.add(welcomeMessage)
