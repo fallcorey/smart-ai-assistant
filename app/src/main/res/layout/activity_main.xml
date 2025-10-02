@@ -196,6 +196,18 @@
             android:onClick="onQuickCommandClick"
             android:tag="Расскажи шутку" />
 
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:text="📚 Факт"
+            android:textSize="10sp"
+            android:background="@drawable/quick_command_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:layout_marginStart="4dp"
+            android:onClick="onQuickCommandClick"
+            android:tag="Интересный факт" />
+
     </LinearLayout>
 
 </LinearLayout>
