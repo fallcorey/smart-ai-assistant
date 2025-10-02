@@ -5,15 +5,17 @@
     android:orientation="vertical"
     android:padding="16dp">
 
+    <!-- Заголовок -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="AI Assistant"
+        android:text="AI Помощник"
         android:textSize="24sp"
         android:textStyle="bold"
         android:gravity="center"
         android:layout_marginBottom="16dp" />
 
+    <!-- Список сообщений -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewChat"
         android:layout_width="match_parent"
@@ -21,19 +23,33 @@
         android:layout_weight="1"
         android:layout_marginBottom="16dp" />
 
+    <!-- Панель ввода -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
+        <!-- Кнопка микрофона -->
+        <ImageButton
+            android:id="@+id/buttonVoice"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_btn_speak_now"
+            android:background="@android:color/transparent"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Поле ввода текста -->
         <EditText
             android:id="@+id/editTextMessage"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:hint="Введите сообщение..."
+            android:inputType="text"
             android:padding="12dp" />
 
+        <!-- Кнопка отправки -->
         <Button
             android:id="@+id/buttonSend"
             android:layout_width="wrap_content"
@@ -43,11 +59,28 @@
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/buttonClear"
+    <!-- Панель управления -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Очистить чат"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <Button
+            android:id="@+id/buttonClear"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Очистить чат" />
+
+    </LinearLayout>
+
+    <!-- Индикатор загрузки -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
         android:layout_marginTop="8dp" />
 
 </LinearLayout>
