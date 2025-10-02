@@ -11,6 +11,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -20,10 +24,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonSend: Button
     private lateinit var buttonVoice: ImageButton
     private lateinit var buttonClear: Button
+    private lateinit var buttonSettings: ImageButton
     private lateinit var progressBar: ProgressBar
+    private lateinit var textVoiceStatus: TextView
     
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
+    private val aiClient = AIClient()
+    private val voiceManager = VoiceManager(this)
+    private val commandProcessor = CommandProcessor(this)
+    
+    private var isVoiceResponseEnabled = true
     
     // Регистрация для распознавания речи
     private val speechRecognizer = registerForActivityResult(
@@ -34,10 +45,12 @@ class MainActivity : AppCompatActivity() {
             if (!results.isNullOrEmpty()) {
                 val spokenText = results[0]
                 editTextMessage.setText(spokenText)
-                sendMessage(spokenText)
+                processUserInput(spokenText, isVoiceInput = true)
             }
         } catch (e: Exception) {
-            Toast.makeText(this, "Ошибка распознавания речи", Toast.LENGTH_SHORT).show()
+            showError("Ошибка распознавания речи")
+        } finally {
+            textVoiceStatus.visibility = View.GONE
         }
     }
     
@@ -48,8 +61,9 @@ class MainActivity : AppCompatActivity() {
         initViews()
         setupRecyclerView()
         setupClickListeners()
+        setupVoiceManager()
+        checkPermissions()
         
-        // Добавляем приветственное сообщение
         addWelcomeMessage()
     }
     
@@ -59,7 +73,9 @@ class MainActivity : AppCompatActivity() {
         buttonSend = findViewById(R.id.buttonSend)
         buttonVoice = findViewById(R.id.buttonVoice)
         buttonClear = findViewById(R.id.buttonClear)
+        buttonSettings = findViewById(R.id.buttonSettings)
         progressBar = findViewById(R.id.progressBar)
+        textVoiceStatus = findViewById(R.id.textVoiceStatus)
     }
     
     private fun setupRecyclerView() {
@@ -69,100 +85,257 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setupClickListeners() {
+        // Отправка текстового сообщения
         buttonSend.setOnClickListener {
             val message = editTextMessage.text.toString().trim()
             if (message.isNotEmpty()) {
-                sendMessage(message)
+                processUserInput(message, isVoiceInput = false)
                 editTextMessage.text.clear()
             } else {
-                Toast.makeText(this, "Введите сообщение", Toast.LENGTH_SHORT).show()
+                showToast("Введите сообщение")
             }
         }
         
+        // Голосовой ввод
         buttonVoice.setOnClickListener {
             startVoiceInput()
         }
         
+        // Очистка чата
         buttonClear.setOnClickListener {
             clearChat()
             addWelcomeMessage()
         }
-    }
-    
-    private fun sendMessage(message: String) {
-        try {
-            // Сообщение пользователя
-            val userMessage = ChatMessage(message, false)
-            chatMessages.add(userMessage)
-            chatAdapter.notifyItemInserted(chatMessages.size - 1)
-            
-            // Ответ AI
-            progressBar.visibility = View.VISIBLE
-            
-            // Имитируем задержку ответа
-            recyclerViewChat.postDelayed({
-                progressBar.visibility = View.GONE
-                
-                val response = generateAIResponse(message)
-                
-                val aiMessage = ChatMessage(response, true)
-                chatMessages.add(aiMessage)
-                chatAdapter.notifyItemInserted(chatMessages.size - 1)
-                scrollToBottom()
-            }, 1000)
-            
-            scrollToBottom()
-        } catch (e: Exception) {
-            progressBar.visibility = View.GONE
-            Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+        
+        // Настройки
+        buttonSettings.setOnClickListener {
+            showSettingsDialog()
+        }
+        
+        // Длинное нажатие для быстрых команд
+        buttonVoice.setOnLongClickListener {
+            showQuickCommandsDialog()
+            true
         }
     }
     
-    private fun generateAIResponse(userMessage: String): String {
-        val message = userMessage.lowercase()
+    private fun setupVoiceManager() {
+        voiceManager.setOnInitListener {
+            showToast("Голосовой помощник готов")
+        }
         
-        return when {
-            message.contains("привет") -> "Привет! Как я могу вам помочь?"
-            message.contains("как дела") -> "У меня всё отлично! Спасибо, что спросили. А у вас?"
-            message.contains("спасибо") -> "Пожалуйста! Обращайтесь, если нужна помощь."
-            message.contains("время") -> "Сейчас: ${java.util.Date()}"
-            message.contains("дата") -> "Сегодня: ${java.text.SimpleDateFormat("dd.MM.yyyy").format(Date())}"
-            message.contains("погода") -> "Для информации о погоде рекомендую использовать специализированные приложения."
-            message.contains("помощь") -> 
-                "Я могу:\n• Отвечать на вопросы\n• Поддерживать беседу\n• Сообщать время и дату"
-            else -> "Я понял ваш вопрос: \"$userMessage\". Это интересно!"
+        voiceManager.setOnSpeechCompleteListener { utteranceId ->
+            // Речь завершена
+        }
+    }
+    
+    private fun processUserInput(userInput: String, isVoiceInput: Boolean) {
+        // Добавляем сообщение пользователя
+        addUserMessage(userInput)
+        
+        // Показываем прогресс
+        progressBar.visibility = View.VISIBLE
+        
+        // Обрабатываем в фоновом потоке
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Сначала проверяем системные команды
+                val commandResult = commandProcessor.processCommand(userInput)
+                if (commandResult.type != CommandType.UNKNOWN) {
+                    withContext(Dispatchers.Main) {
+                        handleCommandResult(commandResult)
+                    }
+                    return@launch
+                }
+                
+                // Проверяем системные команды выполнения
+                if (commandProcessor.executeSystemCommand(userInput)) {
+                    withContext(Dispatchers.Main) {
+                        progressBar.visibility = View.GONE
+                        addAIMessage("✅ Команда выполнена успешно!")
+                        speakResponse("Команда выполнена")
+                    }
+                    return@launch
+                }
+                
+                // Если не команда, то обрабатываем AI
+                val response = aiClient.getAIResponse(userInput)
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    addAIMessage(response)
+                    speakResponse(response)
+                }
+                
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    showError("Ошибка: ${e.message}")
+                }
+            }
+        }
+    }
+    
+    private fun handleCommandResult(result: CommandResult) {
+        progressBar.visibility = View.GONE
+        
+        when (result.type) {
+            CommandType.CLEAR_CHAT -> {
+                clearChat()
+                addWelcomeMessage()
+            }
+            CommandType.HELP -> {
+                addAIMessage(result.message)
+                speakResponse("Вот список доступных команд")
+            }
+            else -> {
+                if (result.message.isNotEmpty()) {
+                    addAIMessage(result.message)
+                    speakResponse(result.message)
+                }
+            }
+        }
+    }
+    
+    private fun addUserMessage(message: String) {
+        val userMessage = ChatMessage(message, false, System.currentTimeMillis())
+        chatMessages.add(userMessage)
+        chatAdapter.notifyItemInserted(chatMessages.size - 1)
+        scrollToBottom()
+    }
+    
+    private fun addAIMessage(message: String) {
+        val aiMessage = ChatMessage(message, true, System.currentTimeMillis())
+        chatMessages.add(aiMessage)
+        chatAdapter.notifyItemInserted(chatMessages.size - 1)
+        scrollToBottom()
+    }
+    
+    private fun speakResponse(response: String) {
+        if (isVoiceResponseEnabled && voiceManager.isReady()) {
+            // Очищаем от эмодзи и форматирования для речи
+            val cleanResponse = response.replace(Regex("[*🔍🎯🕐📅📆⏰📞💬🎵📍📅⏰⚙️🔊☀️🎮📚💰🏥🍳]"), "")
+            voiceManager.speak(cleanResponse)
         }
     }
     
     private fun startVoiceInput() {
-        try {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) 
-                == PackageManager.PERMISSION_GRANTED) {
-                
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Говорите...")
-                }
-                
-                speechRecognizer.launch(intent)
-            } else {
-                requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 1)
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) 
+            == PackageManager.PERMISSION_GRANTED) {
+            
+            textVoiceStatus.visibility = View.VISIBLE
+            
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Говорите...")
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Голосовой ввод не поддерживается", Toast.LENGTH_SHORT).show()
+            
+            try {
+                speechRecognizer.launch(intent)
+            } catch (e: Exception) {
+                textVoiceStatus.visibility = View.GONE
+                showError("Голосовой ввод не поддерживается")
+            }
+        } else {
+            requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 1)
         }
     }
     
     private fun addWelcomeMessage() {
         val welcomeMessage = ChatMessage(
-            "Добро пожаловать! Я ваш AI помощник.\n\n" +
-            "Напишите сообщение или нажмите кнопку микрофона для голосового ввода.",
-            true
+            "🎉 **Добро пожаловать в Умный AI Помощник!**\n\n" +
+            "Я ваш универсальный помощник с искусственным интеллектом. Вот что я умею:\n\n" +
+            "🔍 **Поиск и информация**\n" +
+            "📊 **Расчеты и математика**\n" +  
+            "🕐 **Время, дата, будильники**\n" +
+            "📞 **Звонки и сообщения**\n" +
+            "🎵 **Управление медиа**\n" +
+            "📍 **Навигация и геолокация**\n" +
+            "📅 **Календарь и напоминания**\n" +
+            "⚙️ **Системные настройки**\n" +
+            "🎮 **Развлечения и игры**\n" +
+            "📚 **Обучение и перевод**\n" +
+            "💰 **Финансы и конвертация**\n" +
+            "🏥 **Здоровье и спорт**\n" +
+            "🍳 **Кулинария и рецепты**\n" +
+            "🎨 **Творчество и контент**\n\n" +
+            "💡 **Совет:** Нажмите и удерживайте кнопку микрофона для быстрых команд!",
+            true,
+            System.currentTimeMillis()
         )
         chatMessages.add(welcomeMessage)
         chatAdapter.notifyItemInserted(chatMessages.size - 1)
         scrollToBottom()
+    }
+    
+    private fun showQuickCommandsDialog() {
+        val commands = arrayOf(
+            "Который час?",
+            "Какое число?",
+            "Расскажи шутку",
+            "Интересный факт", 
+            "Поставь таймер на 5 минут",
+            "Найди погода",
+            "Включи музыку"
+        )
+        
+        AlertDialog.Builder(this)
+            .setTitle("🚀 Быстрые команды")
+            .setItems(commands) { _, which ->
+                processUserInput(commands[which], isVoiceInput = false)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+    
+    private fun showSettingsDialog() {
+        val settings = arrayOf(
+            if (isVoiceResponseEnabled) "🔇 Выключить голосовые ответы" else "🔊 Включить голосовые ответы",
+            "🎤 Настройки голоса",
+            "🌍 Язык и регион",
+            "ℹ️ О приложении"
+        )
+        
+        AlertDialog.Builder(this)
+            .setTitle("⚙️ Настройки")
+            .setItems(settings) { _, which ->
+                when (which) {
+                    0 -> {
+                        isVoiceResponseEnabled = !isVoiceResponseEnabled
+                        showToast(if (isVoiceResponseEnabled) "Голосовые ответы включены" else "Голосовые ответы выключены")
+                    }
+                    1 -> showVoiceSettings()
+                    2 -> showLanguageSettings()
+                    3 -> showAboutDialog()
+                }
+            }
+            .setNegativeButton("Закрыть", null)
+            .show()
+    }
+    
+    private fun showVoiceSettings() {
+        // Настройки голоса будут реализованы позже
+        showToast("Настройки голоса в разработке")
+    }
+    
+    private fun showLanguageSettings() {
+        // Настройки языка будут реализованы позже  
+        showToast("Настройки языка в разработке")
+    }
+    
+    private fun showAboutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("ℹ️ О приложении")
+            .setMessage(
+                "🤖 Умный AI Помощник\n\n" +
+                "Версия: 1.0\n" +
+                "Разработчик: AI Assistant Team\n\n" +
+                "Универсальный помощник с искусственным интеллектом\n" +
+                "© 2024 Все права защищены"
+            )
+            .setPositiveButton("OK", null)
+            .show()
     }
     
     private fun clearChat() {
@@ -174,19 +347,56 @@ class MainActivity : AppCompatActivity() {
         recyclerViewChat.scrollToPosition(chatMessages.size - 1)
     }
     
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun showError(message: String) {
+        Toast.makeText(this, "❌ $message", Toast.LENGTH_LONG).show()
+    }
+    
+    private fun checkPermissions() {
+        val permissions = arrayOf(
+            android.Manifest.permission.RECORD_AUDIO,
+            android.Manifest.permission.INTERNET
+        )
+        
+        val neededPermissions = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        
+        if (neededPermissions.isNotEmpty()) {
+            requestPermissions(neededPermissions.toTypedArray(), 0)
+        }
+    }
+    
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Микрофон разрешен", Toast.LENGTH_SHORT).show()
+        
+        if (requestCode == 0 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            showToast("Разрешения получены")
+        } else if (requestCode == 1) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                showToast("Микрофон разрешен")
+            } else {
+                showError("Для голосового ввода нужен доступ к микрофону")
+            }
         }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        voiceManager.shutdown()
     }
 }
 
+// Обновляем модель данных
 data class ChatMessage(
     val message: String,
-    val isAI: Boolean
+    val isAI: Boolean,
+    val timestamp: Long = System.currentTimeMillis()
 )
