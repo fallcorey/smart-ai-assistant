@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -10,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="🤖 Умный AI Помощник"
+        android:text="AI Помощник"
         android:textSize="24sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -37,9 +36,8 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/ic_mic"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:layout_marginEnd="8dp"
-            android:contentDescription="Голосовой ввод" />
+            android:background="@android:color/transparent"
+            android:layout_marginEnd="8dp" />
 
         <!-- Поле ввода текста -->
         <EditText
@@ -47,9 +45,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Введите сообщение или нажмите микрофон..."
-            android:inputType="textMultiLine"
-            android:maxLines="3"
+            android:hint="Введите сообщение..."
+            android:inputType="text"
             android:padding="12dp" />
 
         <!-- Кнопка отправки -->
@@ -72,20 +69,9 @@
 
         <Button
             android:id="@+id/buttonClear"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="🗑️ Очистить"
-            android:layout_marginEnd="4dp" />
-
-        <Button
-            android:id="@+id/buttonSearch"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="🔍 Поиск"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp" />
+            android:text="Очистить чат" />
 
     </LinearLayout>
 
@@ -95,19 +81,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:visibility="gone"
-        android:layout_marginTop="8dp" />
-
-    <!-- Индикатор голосового ввода -->
-    <TextView
-        android:id="@+id/textVoiceStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="🎤 Говорите..."
-        android:gravity="center"
-        android:background="#4CAF50"
-        android:textColor="#FFFFFF"
-        android:padding="12dp"
         android:visibility="gone"
         android:layout_marginTop="8dp" />
 
