@@ -13,6 +13,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -30,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var voiceManager: VoiceManager
     private lateinit var alarmManager: AlarmManager
+    private lateinit var webSearchManager: WebSearchManager
     private var isVoiceResponseEnabled = true
     
     // Хранилище для напоминаний
@@ -59,6 +63,7 @@ class MainActivity : AppCompatActivity() {
         voiceManager = VoiceManager(this)
         alarmManager = AlarmManager(this)
         alarmManager.loadAlarms()
+        webSearchManager = WebSearchManager()
         
         initViews()
         setupRecyclerView()
@@ -112,30 +117,85 @@ class MainActivity : AppCompatActivity() {
         // Показываем прогресс
         progressBar.visibility = View.VISIBLE
         
-        // Имитируем обработку AI
-        handler.postDelayed({
-            progressBar.visibility = View.GONE
-            
-            val response = generateAIResponse(message)
-            val aiMessage = ChatMessage(response, true)
-            chatMessages.add(aiMessage)
-            chatAdapter.notifyItemInserted(chatMessages.size - 1)
-            
-            // Озвучиваем ответ если включено
-            if (isVoiceResponseEnabled && voiceManager.isReady()) {
-                val speechText = prepareTextForSpeech(response)
-                voiceManager.speak(speechText)
+        // Обрабатываем сообщение
+        if (message.contains("найди") || message.contains("поиск") || message.contains("что такое") || 
+            message.contains("кто такой") || message.contains("новости")) {
+            // Поисковые запросы обрабатываем в отдельном потоке
+            handleSearchQuery(message)
+        } else {
+            // Обычные сообщения обрабатываем локально
+            handler.postDelayed({
+                progressBar.visibility = View.GONE
+                val response = generateAIResponse(message)
+                addAIResponse(response)
+            }, 1000)
+        }
+        
+        scrollToBottom()
+    }
+    
+    private fun handleSearchQuery(message: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = when {
+                    message.contains("новости") -> {
+                        val topic = extractSearchQuery(message, "новости")
+                        webSearchManager.getNews(topic)
+                    }
+                    message.contains("что такое") || message.contains("кто такой") -> {
+                        val query = extractSearchQuery(message, listOf("что такое", "кто такой"))
+                        webSearchManager.getQuickAnswer(query)
+                    }
+                    else -> {
+                        val query = extractSearchQuery(message, listOf("найди", "поиск", "найти"))
+                        webSearchManager.searchWeb(query)
+                    }
+                }
+                
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    addAIResponse(response)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    addAIResponse("❌ Ошибка поиска: ${e.message}")
+                }
             }
-            
-            scrollToBottom()
-        }, 1000)
+        }
+    }
+    
+    private fun extractSearchQuery(message: String, keywords: Any): String {
+        return when (keywords) {
+            is String -> message.replace(keywords, "").trim()
+            is List<*> -> {
+                var result = message
+                (keywords as List<String>).forEach { keyword ->
+                    result = result.replace(keyword, "")
+                }
+                result.trim()
+            }
+            else -> message
+        }
+    }
+    
+    private fun addAIResponse(response: String) {
+        val aiMessage = ChatMessage(response, true)
+        chatMessages.add(aiMessage)
+        chatAdapter.notifyItemInserted(chatMessages.size - 1)
+        
+        // Озвучиваем ответ если включено
+        if (isVoiceResponseEnabled && voiceManager.isReady()) {
+            val speechText = prepareTextForSpeech(response)
+            voiceManager.speak(speechText)
+        }
         
         scrollToBottom()
     }
     
     private fun prepareTextForSpeech(text: String): String {
         return text
-            .replace(Regex("[🎯🕐📅📆⏰💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉🎤🌤️ℹ️✅❌🔍⏰⏱️🔔📋⏰⏱️🔔❌✅]"), "")
+            .replace(Regex("[🎯🕐📅📆⏰💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉🎤🌤️ℹ️✅❌🔍⏰⏱️🔔📋📰🔍🎯⚠️❌ℹ️]"), "")
             .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
             .replace(Regex("\\*(.*?)\\*"), "$1")
             .replace("•", " - ")
@@ -182,8 +242,7 @@ class MainActivity : AppCompatActivity() {
             
             // Погода
             message.contains("погода") -> 
-                "К сожалению, у меня нет доступа к актуальным данным о погоде. " +
-                "Рекомендую использовать специализированные приложения для точного прогноза."
+                "Для получения точного прогноза погоды используйте поиск: 'Найди погода в Москве'"
             
             // Будильники
             message.contains("будильник") || message.contains("разбуди") -> {
@@ -229,7 +288,9 @@ class MainActivity : AppCompatActivity() {
 • Время и дата: Время, Дата, День недели  
 • Развлечения: Расскажи шутку
 • Расчеты: Посчитай 2+2
-• Погода: Какая погода?
+• Поиск: Найди кошки, Что такое AI
+• Новости: Новости технологии
+• Погода: Найди погода в Москве
 • Будильники: Поставь будильник на 7:30
 • Таймеры: Поставь таймер на 5 минут
 • Напоминания: Напомни купить молоко
@@ -424,17 +485,19 @@ class MainActivity : AppCompatActivity() {
             "• 🕐 Сообщать время и дату\n" +
             "• 😂 Рассказывать шутки\n" +
             "• 📊 Выполнять расчеты\n" +
+            "• 🔍 Искать в интернете\n" +
+            "• 📰 Показывать новости\n" +
             "• ⏰ Устанавливать будильники\n" +
             "• ⏱️ Ставить таймеры\n" +
             "• 📋 Запоминать напоминания\n\n" +
             "Просто напишите или нажмите микрофон!\n\n" +
             "Примеры команд:\n" +
+            "• 'Найди кошки'\n" +
+            "• 'Что такое AI'\n" +
+            "• 'Новости технологии'\n" +
             "• 'Поставь будильник на 7:30'\n" +
             "• 'Таймер на 5 минут'\n" +
-            "• 'Напомни купить молоко'\n" +
-            "• 'Мои напоминания'\n" +
-            "• 'Мои будильники'\n" +
-            "• 'Включи голос'",
+            "• 'Напомни купить молоко'",
             true
         )
         chatMessages.add(welcomeMessage)
