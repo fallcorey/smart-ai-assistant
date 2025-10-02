@@ -2,6 +2,7 @@ package com.example.aiassistant
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -51,74 +52,74 @@ class AIClient {
             message.contains("день недели") -> getCurrentDayOfWeek()
             
             // 🌤️ ПОГОДА
-            message.contains("погода") -> getWeatherInfo(userMessage)
+            message.contains("погода") -> "🌤️ Информация о погоде временно недоступна. Рекомендую использовать приложение 'Погода' на вашем устройстве."
             
             // 📝 НАПОМИНАНИЯ И ЗАДАЧИ
-            message.contains("напомни") || message.contains("напоминание") -> setupReminder(userMessage)
-            message.contains("задача") || message.contains("todo") -> manageTasks(userMessage)
+            message.contains("напомни") || message.contains("напоминание") -> "⏰ Функция напоминаний будет добавлена в следующем обновлении."
+            message.contains("задача") || message.contains("todo") -> "📝 Управление задачами появится в будущих версиях."
             
             // 🎵 МУЗЫКА И РАЗВЛЕЧЕНИЯ
-            message.contains("музыка") || message.contains("песня") -> controlMusic(userMessage)
+            message.contains("музыка") || message.contains("песня") -> "🎵 Музыкальные функции будут добавлены скоро!"
             message.contains("шутка") || message.contains("анекдот") -> tellJoke()
             message.contains("факт") -> tellInterestingFact()
             
             // 📞 КОНТАКТЫ И СООБЩЕНИЯ
-            message.contains("позвони") || message.contains("звонок") -> makePhoneCall(userMessage)
-            message.contains("смс") || message.contains("сообщение") -> sendSMS(userMessage)
+            message.contains("позвони") || message.contains("звонок") -> "📞 Функция звонков в разработке"
+            message.contains("смс") || message.contains("сообщение") -> "💬 SMS функции появятся в обновлении"
             
             // 📍 НАВИГАЦИЯ И МЕСТОПОЛОЖЕНИЕ
-            message.contains("где я") || message.contains("местоположение") -> getCurrentLocation()
-            message.contains("маршрут") || message.contains("как доехать") -> getNavigation(userMessage)
+            message.contains("где я") || message.contains("местоположение") -> "📍 Определение местоположения временно недоступно"
+            message.contains("маршрут") || message.contains("как доехать") -> "🗺️ Навигация будет доступна в следующих версиях"
             
             // ⚙️ СИСТЕМНЫЕ КОМАНДЫ
-            message.contains("будильник") -> setAlarm(userMessage)
-            message.contains("таймер") -> setTimer(userMessage)
-            message.contains("яркость") -> adjustBrightness(userMessage)
-            message.contains("звонок") -> adjustVolume(userMessage)
+            message.contains("будильник") -> "⏰ Будильник можно установить через приложение Часы"
+            message.contains("таймер") -> "⏱️ Таймер появится в будущих обновлениях"
+            message.contains("яркость") -> "☀️ Настройка яркости в разработке"
+            message.contains("звонок") -> "🔊 Управление громкостью будет добавлено"
             
             // 📚 ОБУЧЕНИЕ И ЗНАНИЯ
-            message.contains("объясни") || message.contains("что такое") -> explainConcept(userMessage)
-            message.contains("перевод") || message.contains("translate") -> translateText(userMessage)
-            message.contains("синоним") -> findSynonyms(userMessage)
+            message.contains("объясни") || message.contains("что такое") -> "📚 Объяснение концепций будет добавлено"
+            message.contains("перевод") || message.contains("translate") -> "🌍 Переводчик появится в следующей версии"
+            message.contains("синоним") -> "📖 Поиск синонимов будет доступен скоро"
             
             // 🎮 ИГРЫ И РАЗВЛЕЧЕНИЯ
-            message.contains("игра") || message.contains("сыграем") -> startGame(userMessage)
-            message.contains("загадай число") -> playNumberGame()
-            message.contains("викторина") -> startQuiz()
+            message.contains("игра") || message.contains("сыграем") -> "🎮 Игровые функции появятся в обновлении"
+            message.contains("загадай число") -> "🎯 Игра 'Угадай число' скоро будет доступна"
+            message.contains("викторина") -> "🧠 Викторины появятся в будущих версиях"
             
             // 💰 ФИНАНСЫ И КОНВЕРТАЦИЯ
-            message.contains("курс") || message.contains("доллар") || message.contains("евро") -> getExchangeRates()
-            message.contains("конверт") || message.contains("convert") -> convertCurrency(userMessage)
+            message.contains("курс") || message.contains("доллар") || message.contains("евро") -> "💱 Курсы валют временно недоступны"
+            message.contains("конверт") || message.contains("convert") -> "💵 Конвертер валют будет добавлен"
             
             // 🏥 ЗДОРОВЬЕ И СПОРТ
-            message.contains("калории") || message.contains("диета") -> calculateCalories(userMessage)
-            message.contains("пульс") || message.contains("давление") -> healthMonitoring(userMessage)
-            message.contains("тренировка") -> suggestWorkout()
+            message.contains("калории") || message.contains("диета") -> "🍎 Расчет калорий появится в обновлении"
+            message.contains("пульс") || message.contains("давление") -> "❤️ Мониторинг здоровья будет доступен"
+            message.contains("тренировка") -> "🏃‍♂️ Рекомендации по тренировкам скоро появятся"
             
             // 🍳 КУЛИНАРИЯ
-            message.contains("рецепт") || message.contains("приготовить") -> getRecipe(userMessage)
-            message.contains("калорийность") -> getFoodCalories(userMessage)
+            message.contains("рецепт") || message.contains("приготовить") -> "🍳 Поиск рецептов будет добавлен"
+            message.contains("калорийность") -> "📊 Расчет калорийности продуктов появится"
             
             // 📖 ЧТЕНИЕ И КНИГИ
-            message.contains("книга") || message.contains("почитать") -> recommendBook(userMessage)
-            message.contains("цитата") -> getQuote()
+            message.contains("книга") || message.contains("почитать") -> "📖 Рекомендации книг в разработке"
+            message.contains("цитата") -> "💫 Цитаты великих людей скоро появятся"
             
             // 🎨 ТВОРЧЕСТВО
-            message.contains("нарисуй") || message.contains("рисунок") -> generateArt(userMessage)
-            message.contains("стих") || message.contains("поэзия") -> generatePoem(userMessage)
-            message.contains("история") -> generateStory(userMessage)
+            message.contains("нарисуй") || message.contains("рисунок") -> "🎨 Генерация изображений появится в обновлении"
+            message.contains("стих") || message.contains("поэзия") -> "✍️ Генерация стихов будет доступна"
+            message.contains("история") -> "📖 Создание историй появится в будущем"
             
             // 💼 РАБОТА И ПРОДУКТИВНОСТЬ
-            message.contains("встреча") || message.contains("календарь") -> manageCalendar(userMessage)
-            message.contains("отчет") || message.contains("документ") -> manageDocuments(userMessage)
+            message.contains("встреча") || message.contains("календарь") -> "📅 Управление календарем будет доступно"
+            message.contains("отчет") || message.contains("документ") -> "📄 Работа с документами в разработке"
             
             // 🛒 ПОКУПКИ
-            message.contains("купить") || message.contains("покупк") -> shoppingAssistance(userMessage)
-            message.contains("цена") || message.contains("стоимость") -> priceCheck(userMessage)
+            message.contains("купить") || message.contains("покупк") -> "🛒 Помощь с покупками скоро появится"
+            message.contains("цена") || message.contains("стоимость") -> "💰 Проверка цен будет доступна"
             
             // 🚗 ТРАНСПОРТ
-            message.contains("такси") -> callTaxi(userMessage)
-            message.contains("расписание") || message.contains("автобус") -> getTransportSchedule(userMessage)
+            message.contains("такси") -> "🚕 Вызов такси временно недоступен"
+            message.contains("расписание") || message.contains("автобус") -> "🚌 Расписание транспорта появится"
             
             // 💬 ОБЩЕНИЕ
             else -> generateSmartResponse(userMessage, context)
@@ -222,16 +223,6 @@ class AIClient {
         return "📆 Сегодня ${days[dayOfWeek]}"
     }
     
-    private fun getWeatherInfo(location: String): String {
-        return "🌤️ Информация о погоде временно недоступна. " +
-               "Рекомендую использовать приложение \"Погода\" на вашем устройстве."
-    }
-    
-    private fun setupReminder(message: String): String {
-        return "⏰ Функция напоминаний будет добавлена в следующем обновлении. " +
-               "Пока можете использовать стандартное приложение \"Часы\"."
-    }
-    
     private fun tellJoke(): String {
         val jokes = listOf(
             "🤣 Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25!",
@@ -298,21 +289,4 @@ class AIClient {
                 "• 🚗 Помогать с транспортом"
         }
     }
-    
-    // Дополнительные функции будут реализованы в следующих шагах
-    private fun controlMusic(message: String): String = "🎵 Музыкальные функции будут добавлены скоро!"
-    private fun makePhoneCall(message: String): String = "📞 Функция звонков в разработке"
-    private fun sendSMS(message: String): String = "💬 SMS функции появятся в обновлении"
-    private fun getCurrentLocation(): String = "📍 Определение местоположения временно недоступно"
-    private fun setAlarm(message: String): String = "⏰ Будильник можно установить через приложение Часы"
-    private fun explainConcept(message: String): String = "📚 Объяснение концепций будет добавлено"
-    private fun translateText(message: String): String = "🌍 Переводчик появится в следующей версии"
-    private fun getExchangeRates(): String = "💱 Курсы валют временно недоступны"
-    private fun suggestWorkout(): String = "🏃‍♂️ Рекомендации по тренировкам скоро появятся"
-    private fun getRecipe(message: String): String = "🍳 Поиск рецептов будет добавлен"
-    private fun recommendBook(message: String): String = "📖 Рекомендации книг в разработке"
-    private fun generateArt(message: String): String = "🎨 Генерация изображений появится в обновлении"
-    private fun manageCalendar(message: String): String = "📅 Управление календарем будет доступно"
-    private fun shoppingAssistance(message: String): String = "🛒 Помощь с покупками скоро появится"
-    private fun callTaxi(message: String): String = "🚕 Вызов такси временно недоступен"
 }
