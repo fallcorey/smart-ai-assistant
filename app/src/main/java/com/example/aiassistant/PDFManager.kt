@@ -22,13 +22,24 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
         
         try {
             val contentResolver: ContentResolver = context.contentResolver
-            val inputStream: InputStream? = contentResolver.openInputStream(pdfUri)
+            
+            // Все IO операции в withContext
+            val inputStream = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(pdfUri)
+            }
             
             if (inputStream != null) {
                 emit(ProcessingProgress("Чтение файла", 20, "Читаю содержимое PDF..."))
                 
-                val text = readTextFromStream(inputStream)
-                inputStream.close()
+                val text = withContext(Dispatchers.IO) {
+                    try {
+                        inputStream.bufferedReader().use { it.readText() }
+                    } catch (e: Exception) {
+                        ""
+                    } finally {
+                        inputStream.close()
+                    }
+                }
                 
                 if (text.isNotEmpty()) {
                     emit(ProcessingProgress("Анализ текста", 40, "Анализирую текст (${text.length} символов)..."))
@@ -36,6 +47,7 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
                     val totalSentences = text.split('.', '!', '?', '\n').size
                     emit(ProcessingProgress("Извлечение знаний", 60, "Найдено $totalSentences предложений..."))
                     
+                    // Обрабатываем текст и изучаем факты
                     val learnedCount = processAndLearnText(text) { current, total ->
                         val progress = 60 + (current * 30 / total)
                         emit(ProcessingProgress(
@@ -57,34 +69,23 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
         }
     }
     
-    private fun readTextFromStream(inputStream: InputStream): String {
-        return try {
-            inputStream.bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            ""
-        }
-    }
-    
     private fun processAndLearnText(text: String, onProgress: ((Int, Int) -> Unit)? = null): Int {
         // Разбиваем текст на предложения для обучения
         val sentences = text.split('.', '!', '?', '\n')
             .map { it.trim() }
-            .filter { it.length > 20 && it.length < 500 } // Фильтруем по длине
+            .filter { it.length > 20 && it.length < 500 }
         
         var learnedCount = 0
-        val totalToProcess = sentences.size.coerceAtMost(50) // Ограничиваем количество
+        val totalToProcess = sentences.size.coerceAtMost(50)
         
         sentences.forEachIndexed { index, sentence ->
             if (learnedCount < 50 && sentence.isNotEmpty()) {
-                // Создаем вопрос-ответ пары из предложений
                 val words = sentence.split(' ').filter { it.length > 3 }
                 if (words.size >= 3) {
-                    // Берем ключевые слова для вопроса
                     val keyWords = words.take(3).joinToString(" ")
                     knowledgeManager.learn(keyWords, sentence)
                     learnedCount++
                     
-                    // Отправляем прогресс
                     onProgress?.invoke(index + 1, totalToProcess)
                 }
             }
@@ -93,18 +94,28 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
         return learnedCount
     }
     
-    suspend fun extractKeyFactsFromPDF(pdfUri: Uri): Flow<ProcessingProgress> = flow {
+    fun extractKeyFactsFromPDF(pdfUri: Uri): Flow<ProcessingProgress> = flow {
         emit(ProcessingProgress("Начало анализа", 0, "Начинаю анализ PDF файла..."))
         
         try {
             val contentResolver: ContentResolver = context.contentResolver
-            val inputStream: InputStream? = contentResolver.openInputStream(pdfUri)
+            
+            val inputStream = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(pdfUri)
+            }
             
             if (inputStream != null) {
                 emit(ProcessingProgress("Чтение файла", 30, "Читаю содержимое PDF..."))
                 
-                val text = readTextFromStream(inputStream)
-                inputStream.close()
+                val text = withContext(Dispatchers.IO) {
+                    try {
+                        inputStream.bufferedReader().use { it.readText() }
+                    } catch (e: Exception) {
+                        ""
+                    } finally {
+                        inputStream.close()
+                    }
+                }
                 
                 if (text.isNotEmpty()) {
                     emit(ProcessingProgress("Поиск фактов", 60, "Ищу ключевые факты в тексте..."))
@@ -137,7 +148,6 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
             .map { it.trim() }
             .filter { it.length > 30 && it.length < 200 }
         
-        // Ищем предложения с ключевыми словами (упрощенный подход)
         val keyWords = listOf("определение", "это", "значит", "следовательно", "таким образом", 
                              "важно", "ключевой", "основной", "главный", "вывод", "результат")
         
@@ -145,23 +155,33 @@ class PDFManager(private val context: Context, private val knowledgeManager: Kno
             .filter { sentence ->
                 keyWords.any { keyword -> 
                     sentence.contains(keyword, ignoreCase = true) 
-                } || sentence.split(' ').size in 8..20 // Или предложения средней длины
+                } || sentence.split(' ').size in 8..20
             }
-            .take(15) // Ограничиваем количество фактов
+            .take(15)
     }
     
-    suspend fun getPDFStats(pdfUri: Uri): Flow<ProcessingProgress> = flow {
+    fun getPDFStats(pdfUri: Uri): Flow<ProcessingProgress> = flow {
         emit(ProcessingProgress("Анализ", 0, "Анализирую структуру PDF..."))
         
         try {
             val contentResolver: ContentResolver = context.contentResolver
-            val inputStream: InputStream? = contentResolver.openInputStream(pdfUri)
+            
+            val inputStream = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(pdfUri)
+            }
             
             if (inputStream != null) {
                 emit(ProcessingProgress("Чтение", 50, "Читаю содержимое..."))
                 
-                val text = readTextFromStream(inputStream)
-                inputStream.close()
+                val text = withContext(Dispatchers.IO) {
+                    try {
+                        inputStream.bufferedReader().use { it.readText() }
+                    } catch (e: Exception) {
+                        ""
+                    } finally {
+                        inputStream.close()
+                    }
+                }
                 
                 if (text.isNotEmpty()) {
                     val charCount = text.length
