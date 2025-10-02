@@ -1,6 +1,8 @@
 package com.example.aiassistant
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,23 +17,32 @@ class MainActivity : AppCompatActivity() {
     
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
+    private val handler = Handler(Looper.getMainLooper())
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        // Инициализация views
+        initViews()
+        setupRecyclerView()
+        setupClickListeners()
+        addWelcomeMessage()
+    }
+    
+    private fun initViews() {
         recyclerViewChat = findViewById(R.id.recyclerViewChat)
         editTextMessage = findViewById(R.id.editTextMessage)
         buttonSend = findViewById(R.id.buttonSend)
         buttonClear = findViewById(R.id.buttonClear)
-        
-        // Настройка RecyclerView
+    }
+    
+    private fun setupRecyclerView() {
         chatAdapter = ChatAdapter(chatMessages)
         recyclerViewChat.layoutManager = LinearLayoutManager(this)
         recyclerViewChat.adapter = chatAdapter
-        
-        // Обработчики кликов
+    }
+    
+    private fun setupClickListeners() {
         buttonSend.setOnClickListener {
             val message = editTextMessage.text.toString().trim()
             if (message.isNotEmpty()) {
@@ -39,7 +50,7 @@ class MainActivity : AppCompatActivity() {
                 editTextMessage.text.clear()
                 
                 // Имитация ответа AI
-                Handler().postDelayed({
+                handler.postDelayed({
                     addAiMessage(generateResponse(message))
                 }, 1000)
             } else {
@@ -52,9 +63,6 @@ class MainActivity : AppCompatActivity() {
             chatAdapter.notifyDataSetChanged()
             addWelcomeMessage()
         }
-        
-        // Приветственное сообщение
-        addWelcomeMessage()
     }
     
     private fun addUserMessage(message: String) {
@@ -70,22 +78,19 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun addWelcomeMessage() {
-        addAiMessage("Привет! Я ваш AI помощник. Чем могу помочь?")
+        addAiMessage("Привет! Я ваш AI помощник. Задавайте вопросы!")
     }
     
     private fun generateResponse(userMessage: String): String {
         val message = userMessage.lowercase()
         
         return when {
-            message.contains("привет") -> "Привет! Рад вас видеть!"
-            message.contains("как дела") -> "Всё отлично! Готов помогать вам."
-            message.contains("время") -> "Текущее время: ${java.util.Date()}"
-            message.contains("дата") -> "Сегодня: ${java.text.SimpleDateFormat("dd.MM.yyyy").format(java.util.Date())}"
-            message.contains("погода") -> "Погоду лучше проверять в специализированном приложении"
-            message.contains("шутка") -> "Почему программисты путают Хэллоуин и Рождество? Потому что Oct 31 == Dec 25!"
-            message.contains("спасибо") -> "Пожалуйста! Обращайтесь ещё!"
-            message.contains("пока") -> "До свидания! Буду рад помочь снова."
-            else -> "Интересный вопрос! Я ещё учусь, но скоро смогу отвечать на такие вопросы лучше."
+            message.contains("привет") -> "Привет! Как дела?"
+            message.contains("как дела") -> "Отлично! Рад вас видеть!"
+            message.contains("время") -> "Время: ${java.util.Date()}"
+            message.contains("дата") -> "Дата: ${java.text.SimpleDateFormat("dd.MM.yyyy").format(java.util.Date())}"
+            message.contains("шутка") -> "Что программист сказал перед смертью? Hello world!"
+            else -> "Понял ваш вопрос: \"$userMessage\". Чем еще могу помочь?"
         }
     }
     
