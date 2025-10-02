@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonVoice: ImageButton
     private lateinit var buttonClear: Button
     private lateinit var buttonSettings: ImageButton
+    private lateinit var buttonHelp: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var textVoiceStatus: TextView
     
@@ -75,6 +76,7 @@ class MainActivity : AppCompatActivity() {
         buttonVoice = findViewById(R.id.buttonVoice)
         buttonClear = findViewById(R.id.buttonClear)
         buttonSettings = findViewById(R.id.buttonSettings)
+        buttonHelp = findViewById(R.id.buttonHelp)
         progressBar = findViewById(R.id.progressBar)
         textVoiceStatus = findViewById(R.id.textVoiceStatus)
     }
@@ -111,6 +113,11 @@ class MainActivity : AppCompatActivity() {
         // Настройки
         buttonSettings.setOnClickListener {
             showSettingsDialog()
+        }
+        
+        // Помощь
+        buttonHelp.setOnClickListener {
+            onHelpClick(it)
         }
         
         // Длинное нажатие для быстрых команд
