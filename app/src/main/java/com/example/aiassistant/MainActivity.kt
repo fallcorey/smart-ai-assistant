@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
     private val handler = Handler(Looper.getMainLooper())
+    private lateinit var voiceManager: VoiceManager
+    private var isVoiceResponseEnabled = true
     
     // Регистрация для распознавания речи
     private val speechRecognizer = registerForActivityResult(
@@ -48,6 +50,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        
+        // Инициализируем VoiceManager после setContentView
+        voiceManager = VoiceManager(this)
         
         initViews()
         setupRecyclerView()
@@ -109,10 +114,24 @@ class MainActivity : AppCompatActivity() {
             val aiMessage = ChatMessage(response, true)
             chatMessages.add(aiMessage)
             chatAdapter.notifyItemInserted(chatMessages.size - 1)
+            
+            // Озвучиваем ответ если включено
+            if (isVoiceResponseEnabled && voiceManager.isReady()) {
+                voiceManager.speak(cleanTextForSpeech(response))
+            }
+            
             scrollToBottom()
         }, 1000)
         
         scrollToBottom()
+    }
+    
+    private fun cleanTextForSpeech(text: String): String {
+        // Убираем эмодзи и форматирование для естественной речи
+        return text.replace(Regex("[*🔍🎯🕐📅📆⏰📞💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉💬🎤🕐😂📊🌤️ℹ️👋✅❌]"), "")
+                  .replace("**", "")
+                  .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
+                  .trim()
     }
     
     private fun generateAIResponse(userMessage: String): String {
@@ -165,6 +184,7 @@ class MainActivity : AppCompatActivity() {
 • 😂 **Развлечения:** Расскажи шутку
 • 📊 **Расчеты:** Посчитай 2+2
 • 🌤️ **Погода:** Какая погода?
+• 🔊 **Голос:** Включи голос / Выключи голос
 
 Просто напишите или скажите команду!"""
             
@@ -184,6 +204,17 @@ class MainActivity : AppCompatActivity() {
             message.contains("посчитай") || message.contains("сколько будет") || 
             message.contains("+") || message.contains("-") || message.contains("*") || message.contains("/") -> {
                 calculateMathExpression(message)
+            }
+            
+            // Управление голосом
+            message.contains("голос") && message.contains("выключи") -> {
+                isVoiceResponseEnabled = false
+                "🔇 Голосовые ответы выключены"
+            }
+            
+            message.contains("голос") && message.contains("включи") -> {
+                isVoiceResponseEnabled = true
+                "🔊 Голосовые ответы включены"
             }
             
             // Прощания
@@ -263,10 +294,12 @@ class MainActivity : AppCompatActivity() {
             "Я могу:\n" +
             "• 💬 Отвечать на вопросы\n" +
             "• 🎤 Распознавать голос\n" +
+            "• 🔊 Озвучивать ответы\n" +
             "• 🕐 Сообщать время и дату\n" +
             "• 😂 Рассказывать шутки\n" +
             "• 📊 Выполнять расчеты\n\n" +
-            "Просто напишите или нажмите микрофон!",
+            "Просто напишите или нажмите микрофон!\n\n" +
+            "💡 **Совет:** Скажите 'включи голос' или 'выключи голос' для управления озвучкой",
             true
         )
         chatMessages.add(welcomeMessage)
@@ -292,6 +325,11 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == 1 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Toast.makeText(this, "Микрофон разрешен", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        voiceManager.shutdown()
     }
 }
 
