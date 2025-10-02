@@ -38,6 +38,15 @@
             android:src="@android:drawable/ic_btn_speak_now"
             android:background="@android:color/transparent"
             android:layout_marginEnd="8dp" />
+        
+        <!-- Кнопка выбора файла -->
+        <Button
+            android:id="@+id/buttonFile"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:text="📁"
+            android:textSize="18sp"
+            android:layout_marginEnd="8dp" />
 
         <!-- Поле ввода текста -->
         <EditText
