@@ -1,12 +1,4 @@
 <resources>
     <color name="color_primary">#2196F3</color>
     <color name="color_primary_dark">#1976D2</color>
-    <color name="color_accent">#FF4081</color>
-    <color name="bg_user_message">#2196F3</color>
-    <color name="bg_ai_message">#F5F5F5</color>
-    <color name="text_user_message">#FFFFFF</color>
-    <color name="text_ai_message">#333333</color>
-    <color name="chat_background">#F8F9FA</color>
-    <color name="input_background">#FFFFFF</color>
-    <color name="voice_indicator">#4CAF50</color>
 </resources>
