@@ -6,32 +6,14 @@
     android:layout_margin="8dp"
     android:gravity="start">
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/textMessage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bubble_ai"
+        android:maxWidth="280dp"
         android:padding="12dp"
-        android:maxWidth="280dp">
-
-        <TextView
-            android:id="@+id/textMessage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#333333"
-            android:textSize="16sp"
-            android:text="Сообщение AI" />
-
-        <TextView
-            android:id="@+id/textTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="#666666"
-            android:textSize="10sp"
-            android:text="12:00"
-            android:layout_gravity="end"
-            android:layout_marginTop="4dp" />
-
-    </LinearLayout>
+        android:background="#E0E0E0"
+        android:textColor="#000000"
+        android:textSize="16sp" />
 
 </LinearLayout>
