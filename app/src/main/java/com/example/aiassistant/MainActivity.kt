@@ -2,6 +2,7 @@ package com.example.aiassistant
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.os.Handler
@@ -27,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonVoice: ImageButton
     private lateinit var buttonClear: Button
     private lateinit var progressBar: ProgressBar
+    private lateinit var buttonFile: Button
     
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
@@ -35,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var alarmManager: AlarmManager
     private lateinit var webSearchManager: WebSearchManager
     private lateinit var knowledgeManager: KnowledgeManager
+    private lateinit var pdfManager: PDFManager
     private var isVoiceResponseEnabled = true
     
     // Хранилище для напоминаний
@@ -59,6 +62,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    // Регистрация для выбора файлов
+    private val filePicker = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            handleFileSelection(uri)
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -69,6 +81,7 @@ class MainActivity : AppCompatActivity() {
         alarmManager.loadAlarms()
         webSearchManager = WebSearchManager()
         knowledgeManager = KnowledgeManager(this)
+        pdfManager = PDFManager(this, knowledgeManager)
         
         initViews()
         setupRecyclerView()
@@ -84,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         buttonVoice = findViewById(R.id.buttonVoice)
         buttonClear = findViewById(R.id.buttonClear)
         progressBar = findViewById(R.id.progressBar)
+        buttonFile = findViewById(R.id.buttonFile)
     }
     
     private fun setupRecyclerView() {
@@ -111,6 +125,34 @@ class MainActivity : AppCompatActivity() {
             clearChat()
             addWelcomeMessage()
         }
+        
+        buttonFile.setOnClickListener {
+            openFilePicker()
+        }
+    }
+    
+    private fun openFilePicker() {
+        filePicker.launch("application/pdf")
+    }
+    
+    private fun handleFileSelection(uri: Uri) {
+        progressBar.visibility = View.VISIBLE
+        addAIResponse("📖 Обрабатываю PDF файл...", false)
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val result = pdfManager.learnFromPDF(uri)
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    addAIResponse(result, false)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    addAIResponse("❌ Ошибка при обработке файла: ${e.message}", false)
+                }
+            }
+        }
     }
     
     private fun sendMessage(message: String) {
@@ -133,7 +175,8 @@ class MainActivity : AppCompatActivity() {
         
         // Обрабатываем сообщение
         if (message.contains("найди") || message.contains("поиск") || message.contains("что такое") || 
-            message.contains("кто такой") || message.contains("новости") || message.contains("погода")) {
+            message.contains("кто такой") || message.contains("новости") || message.contains("погода") ||
+            message.contains("проанализируй pdf") || message.contains("факты из pdf")) {
             // Поисковые запросы обрабатываем в отдельном потоке
             handleSearchQuery(message)
         } else {
@@ -273,7 +316,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun prepareTextForSpeech(text: String): String {
         return text
-            .replace(Regex("[🎯🕐📅📆⏰💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉🎤🌤️ℹ️✅❌🔍⏰⏱️🔔📋📰🔍🎯⚠️❌ℹ️🌧️❄️🌥️🌤️🤔👍👎🤷📊🧠]"), "")
+            .replace(Regex("[🎯🕐📅📆⏰💬🎵📍⚙️🔊☀️🎮📚💰🏥🍳😂🤣😄😊🤭👋🤔🎉🎤🌤️ℹ️✅❌🔍⏰⏱️🔔📋📰🔍🎯⚠️❌ℹ️🌧️❄️🌥️🌤️🤔👍👎🤷📊🧠📖📚🔍]"), "")
             .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
             .replace(Regex("\\*(.*?)\\*"), "$1")
             .replace("•", " - ")
@@ -319,6 +362,15 @@ class MainActivity : AppCompatActivity() {
             
             message.contains("забудь") -> {
                 handleForgetCommand(userMessage)
+            }
+            
+            // PDF команды
+            message.contains("загрузи pdf") || message.contains("открой pdf") -> {
+                "Нажмите кнопку '📁 Файл' для выбора PDF файла, или скажите 'анализируй pdf'"
+            }
+            
+            message.contains("анализируй pdf") || message.contains("проанализируй pdf") -> {
+                "Нажмите кнопку '📁 Файл' для выбора PDF файла для анализа"
             }
             
             // Время
@@ -388,6 +440,7 @@ class MainActivity : AppCompatActivity() {
 
 • 💬 **Общение:** Привет, Как дела, Спасибо
 • 🧠 **Обучение:** Запомни что..., Что ты знаешь, Забудь...
+• 📖 **PDF файлы:** Загрузи PDF, Анализируй PDF
 • 🕐 **Время и дата:** Время, Дата, День недели  
 • 😂 **Развлечения:** Расскажи шутку
 • 📊 **Расчеты:** Посчитай 2+2
@@ -461,7 +514,8 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 // Если не нашли ответ, предлагаем обучение
                 "🤔 Я пока не знаю ответ на этот вопрос. " +
-                "Вы можете научить меня! Скажите: 'Запомни, что $userMessage - это [ваш ответ]'"
+                "Вы можете научить меня! Скажите: 'Запомни, что $userMessage - это [ваш ответ]' " +
+                "или загрузите PDF файл с информацией."
             }
         }
     }
@@ -621,10 +675,11 @@ class MainActivity : AppCompatActivity() {
     private fun addWelcomeMessage() {
         val welcomeMessage = ChatMessage(
             "🎉 Добро пожаловать в Умный AI Помощник!\n\n" +
-            "Теперь я могу **самообучаться**! 🧠\n\n" +
+            "Теперь я могу **читать PDF файлы**! 📖\n\n" +
             "Новые возможности:\n" +
             "• 💬 Отвечать на вопросы\n" +
             "• 🧠 Запоминать новые ответы\n" +
+            "• 📖 Читать и учиться из PDF\n" +
             "• 📊 Улучшаться с вашей помощью\n" +
             "• 🎤 Распознавать голос\n" +
             "• 🔊 Озвучивать ответы\n" +
@@ -637,14 +692,16 @@ class MainActivity : AppCompatActivity() {
             "• ⏰ Устанавливать будильники\n" +
             "• ⏱️ Ставить таймеры\n" +
             "• 📋 Запоминать напоминания\n\n" +
-            "**Примеры команд для обучения:**\n" +
+            "**Как использовать PDF:**\n" +
+            "1. Нажмите кнопку '📁 Файл'\n" +
+            "2. Выберите PDF файл\n" +
+            "3. Я извлеку знания автоматически!\n\n" +
+            "**Примеры команд:**\n" +
             "• 'Запомни, что кошки - это животные'\n" +
             "• 'Что ты знаешь?' (статистика)\n" +
-            "• 'Забудь кошки' (удалить)\n" +
+            "• 'Загрузи PDF'\n" +
             "• 'Найди кошки'\n" +
-            "• 'Что такое AI'\n" +
-            "• 'Новости технологии'\n" +
-            "• 'Погода Москва'",
+            "• 'Что такое AI'",
             true
         )
         chatMessages.add(welcomeMessage)
