@@ -11,7 +11,7 @@ import java.io.InputStream
 import java.util.*
 import kotlin.math.min
 
-class AdvancedPDFManager(private val context: Context, private val knowledgeManager: KnowledgeManager) {
+class PDFManager(private val context: Context, private val knowledgeManager: KnowledgeManager) {
     
     data class ProcessingProgress(
         val step: String,
@@ -35,10 +35,9 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
     )
     
     private var currentBook: BookContent? = null
-    private val bookMemory = mutableMapOf<String, BookContent>()
     
     fun learnFromPDF(pdfUri: Uri): Flow<ProcessingProgress> = flow {
-        emit(ProcessingProgress("📖 Начало обработки", 0, "Открываю PDF файл..."))
+        emit(ProcessingProgress("Начало обработки", 0, "Открываю PDF файл..."))
         
         try {
             val contentResolver: ContentResolver = context.contentResolver
@@ -52,7 +51,7 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
             }
             
             if (inputStream != null) {
-                emit(ProcessingProgress("📖 Чтение файла", 20, "Извлекаю текст из PDF..."))
+                emit(ProcessingProgress("Чтение файла", 20, "Извлекаю текст из PDF..."))
                 
                 val text = withContext(Dispatchers.IO) {
                     try {
@@ -69,50 +68,49 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
                 }
                 
                 if (text.isNotEmpty() && text.length > 100) {
-                    emit(ProcessingProgress("🔍 Анализ структуры", 40, "Анализирую структуру книги..."))
+                    emit(ProcessingProgress("Анализ структуры", 40, "Анализирую структуру книги..."))
                     
                     // Анализируем книгу
                     val book = analyzeBookStructure(text)
                     currentBook = book
-                    bookMemory[book.title] = book
                     
-                    emit(ProcessingProgress("🧠 Извлечение знаний", 60, "Извлекаю ключевые концепции..."))
+                    emit(ProcessingProgress("Извлечение знаний", 60, "Извлекаю ключевые концепции..."))
                     
                     // Извлекаем ключевые знания
                     val concepts = extractKeyConcepts(book)
                     
-                    emit(ProcessingProgress("💾 Сохранение", 80, "Сохраняю знания в базу..."))
+                    emit(ProcessingProgress("Сохранение", 80, "Сохраняю знания в базу..."))
                     
                     // Сохраняем в базу знаний
                     saveBookToKnowledge(book, concepts)
                     
                     val stats = """
-                        ✅ Книга успешно обработана!
+                        КНИГА УСПЕШНО ОБРАБОТАНА!
                         
-                        📊 Статистика:
-                        • Название: ${book.title}
-                        • Глав: ${book.chapters.size}
-                        • Концепций: ${concepts.size}
-                        • Символов: ${text.length}
+                        Статистика:
+                        Название: ${book.title}
+                        Глав: ${book.chapters.size}
+                        Концепций: ${concepts.size}
+                        Символов: ${text.length}
                         
                         Теперь вы можете задавать вопросы по содержанию книги!
                         Примеры вопросов:
-                        • "О чем эта книга?"
-                        • "Какие основные идеи в главе 1?"
-                        • "Объясни концепцию [название концепции]"
-                        • "Кто главные герои?"
-                        • "В чем основная мысль книги?"
+                        - "О чем эта книга?"
+                        - "Какие основные идеи в главе 1?"
+                        - "Объясни концепцию [название концепции]"
+                        - "Кто главные герои?"
+                        - "В чем основная мысль книги?"
                     """.trimIndent()
                     
-                    emit(ProcessingProgress("🎉 Завершение", 100, stats))
+                    emit(ProcessingProgress("Завершение", 100, stats))
                 } else {
-                    emit(ProcessingProgress("❌ Ошибка", 100, "Не удалось извлечь достаточное количество текста из PDF"))
+                    emit(ProcessingProgress("Ошибка", 100, "Не удалось извлечь достаточное количество текста из PDF"))
                 }
             } else {
-                emit(ProcessingProgress("❌ Ошибка", 100, "Не удалось открыть PDF файл"))
+                emit(ProcessingProgress("Ошибка", 100, "Не удалось открыть PDF файл"))
             }
         } catch (e: Exception) {
-            emit(ProcessingProgress("❌ Ошибка", 100, "Ошибка обработки: ${e.message}"))
+            emit(ProcessingProgress("Ошибка", 100, "Ошибка обработки: ${e.message}"))
         }
     }
     
@@ -181,13 +179,13 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
             chapters.add(createChapter(currentChapter, currentContent.toString()))
         }
         
-        return chapters.take(20) // Ограничиваем количество глав
+        return chapters.take(10) // Ограничиваем количество глав
     }
     
     private fun createChapter(title: String, content: String): Chapter {
         val paragraphs = content.split(Regex("\\n\\s*\\n"))
             .filter { it.trim().length > 20 }
-            .take(50)
+            .take(30)
         
         val keyPoints = extractKeyPoints(content)
         
@@ -202,7 +200,7 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
     private fun extractKeyPoints(text: String): List<String> {
         val sentences = text.split('.', '!', '?')
             .map { it.trim() }
-            .filter { it.length in 30..200 }
+            .filter { it.length in 20..150 }
         
         val keyWords = listOf("важно", "ключевой", "основной", "главный", "следовательно", 
                              "таким образом", "вывод", "результат", "заключение")
@@ -211,28 +209,28 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
             .filter { sentence ->
                 keyWords.any { keyword -> 
                     sentence.contains(keyword, ignoreCase = true) 
-                } || sentence.split(' ').size in 8..25
+                } || sentence.split(' ').size in 5..20
             }
-            .take(10)
+            .take(5)
     }
     
     private fun generateSummary(text: String): String {
         val sentences = text.split('.', '!', '?')
             .map { it.trim() }
-            .filter { it.length > 20 }
+            .filter { it.length > 15 }
         
         val importantSentences = sentences
             .filter { 
-                it.split(' ').size in 10..30 &&
+                it.split(' ').size in 8..25 &&
                 it.any { char -> char.isUpperCase() } &&
                 !it.contains("http") 
             }
-            .take(5)
+            .take(3)
         
-        return if (importantSentences.size >= 3) {
+        return if (importantSentences.size >= 2) {
             importantSentences.joinToString(". ") + "."
         } else {
-            "Эта книга содержит важную информацию по выбранной теме."
+            "Эта книга содержит важную информацию по выбранной теме. Основное содержание посвящено ключевым аспектам предмета обсуждения."
         }
     }
     
@@ -250,18 +248,11 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
     
     private fun extractConceptsFromText(text: String): List<String> {
         val words = text.split(' ', ',', '.', '!', '?')
-            .filter { it.length > 4 }
+            .filter { it.length > 3 && it[0].isUpperCase() }
             .map { it.toLowerCase(Locale.getDefault()) }
+            .distinct()
         
-        val wordFrequency = mutableMapOf<String, Int>()
-        words.forEach { word ->
-            wordFrequency[word] = wordFrequency.getOrDefault(word, 0) + 1
-        }
-        
-        return wordFrequency.entries
-            .sortedByDescending { it.value }
-            .take(15)
-            .map { it.key }
+        return words.take(10)
     }
     
     private fun saveBookToKnowledge(book: BookContent, concepts: Map<String, List<String>>) {
@@ -272,18 +263,21 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
         
         // Сохраняем информацию о главах
         book.chapters.forEachIndexed { index, chapter ->
-            knowledgeManager.learn("глава ${index + 1} ${book.title}", chapter.title + ": " + chapter.keyPoints.take(3).joinToString())
-            knowledgeManager.learn("содержание главы ${index + 1} ${book.title}", chapter.content.take(500))
+            if (index < 5) { // Ограничиваем количество сохраняемых глав
+                knowledgeManager.learn("глава ${index + 1} ${book.title}", chapter.title)
+                knowledgeManager.learn("содержание главы ${index + 1} ${book.title}", chapter.content.take(300))
+            }
         }
         
         // Сохраняем ключевые концепции
         concepts.forEach { (chapter, conceptList) ->
             conceptList.forEach { concept ->
-                val explanation = findConceptExplanation(concept, book.rawText)
-                if (explanation.isNotEmpty()) {
-                    knowledgeManager.learn("что такое $concept", explanation)
-                    knowledgeManager.learn("определение $concept", explanation)
-                    knowledgeManager.learn("$concept в книге ${book.title}", explanation)
+                if (concept.length > 3) {
+                    val explanation = findConceptExplanation(concept, book.rawText)
+                    if (explanation.isNotEmpty()) {
+                        knowledgeManager.learn("что такое $concept", explanation)
+                        knowledgeManager.learn("определение $concept", explanation)
+                    }
                 }
             }
         }
@@ -292,67 +286,73 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
     private fun findConceptExplanation(concept: String, text: String): String {
         val sentences = text.split('.', '!', '?')
             .map { it.trim() }
-            .filter { it.contains(concept, ignoreCase = true) && it.length in 30..300 }
+            .filter { it.contains(concept, ignoreCase = true) && it.length in 20..200 }
         
-        return sentences.take(2).joinToString(". ") + "."
+        return if (sentences.isNotEmpty()) {
+            sentences.take(1).joinToString(". ")
+        } else {
+            ""
+        }
     }
     
     fun askAboutBook(question: String): String {
         val book = currentBook ?: return "Сначала загрузите PDF файл с книгой."
         
+        val lowerQuestion = question.toLowerCase(Locale.getDefault())
+        
         return when {
-            question.contains("о чем", ignoreCase = true) || 
-            question.contains("тема", ignoreCase = true) -> {
-                "📖 ${book.title}\n\n${book.summary}"
+            lowerQuestion.contains("о чем") || 
+            lowerQuestion.contains("тема") -> {
+                "КНИГА: ${book.title}\n\nКРАТКОЕ СОДЕРЖАНИЕ:\n${book.summary}"
             }
             
-            question.contains("глава", ignoreCase = true) -> {
+            lowerQuestion.contains("глава") -> {
                 handleChapterQuestion(question, book)
             }
             
-            question.contains("что такое", ignoreCase = true) ||
-            question.contains("определение", ignoreCase = true) ||
-            question.contains("объясни", ignoreCase = true) -> {
+            lowerQuestion.contains("что такое") ||
+            lowerQuestion.contains("определение") ||
+            lowerQuestion.contains("объясни") -> {
                 handleConceptQuestion(question, book)
             }
             
-            question.contains("основн", ignoreCase = true) -> {
-                "📚 Основные идеи книги \"${book.title}\":\n\n" +
-                book.chapters.flatMap { it.keyPoints }.take(5).joinToString("\n• ") { "• $it" }
+            lowerQuestion.contains("основн") -> {
+                "ОСНОВНЫЕ ИДЕИ КНИГИ \"${book.title}\":\n" +
+                book.chapters.flatMap { it.keyPoints }.take(3).joinToString("\n- ") { "- $it" }
             }
             
-            question.contains("персонаж", ignoreCase = true) ||
-            question.contains("герой", ignoreCase = true) -> {
-                "🎭 Персонажи книги:\n\n" +
-                extractCharacters(book.rawText).joinToString("\n• ") { "• $it" }
+            lowerQuestion.contains("персонаж") ||
+            lowerQuestion.contains("герой") -> {
+                "ПЕРСОНАЖИ КНИГИ:\n" +
+                extractCharacters(book.rawText).joinToString("\n- ") { "- $it" }
             }
             
             else -> {
-                // Семантический поиск по содержанию
-                semanticSearch(question, book)
+                // Простой поиск по содержанию
+                simpleSearch(question, book)
             }
         }
     }
     
     private fun handleChapterQuestion(question: String, book: BookContent): String {
         val chapterPattern = Regex("глава\\s*(\\d+)", RegexOption.IGNORE_CASE)
-        val match = chapterPattern.find(question)
+        val match = chapterPattern.find(question.toLowerCase(Locale.getDefault()))
         
         return if (match != null) {
             val chapterNum = match.groupValues[1].toIntOrNull()
             if (chapterNum != null && chapterNum in 1..book.chapters.size) {
                 val chapter = book.chapters[chapterNum - 1]
-                "📑 ${chapter.title}\n\n" +
+                "ГЛАВА $chapterNum: ${chapter.title}\n\n" +
                 "Ключевые моменты:\n" +
-                chapter.keyPoints.take(5).joinToString("\n• ") { "• $it" } +
-                "\n\nСодержание: ${chapter.content.take(300)}..."
+                chapter.keyPoints.take(3).joinToString("\n- ") { "- $it" } +
+                "\n\nСодержание: ${chapter.content.take(250)}..."
             } else {
                 "Глава $chapterNum не найдена. В книге ${book.chapters.size} глав."
             }
         } else {
-            "Список глав:\n" +
-            book.chapters.take(10).mapIndexed { index, chapter -> 
-                "${index + 1}. ${chapter.title.take(50)}..."
+            "СПИСОК ГЛАВ:\n" +
+            book.chapters.take(5).mapIndexed { index, chapter -> 
+                "${index + 1}. ${chapter.title.take(40)}..."
             }.joinToString("\n")
         }
     }
@@ -365,7 +365,7 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
             .replace("книг[аеи]", "", ignoreCase = true)
             .trim()
         
-        if (concept.length < 3) {
+        if (concept.length < 2) {
             return "Уточните, о какой концепции вы хотите узнать?"
         }
         
@@ -373,54 +373,56 @@ class AdvancedPDFManager(private val context: Context, private val knowledgeMana
         val explanation = findConceptExplanation(concept, book.rawText)
         
         return if (explanation.isNotEmpty()) {
-            "📚 Концепция \"$concept\" в книге \"${book.title}\":\n\n$explanation"
+            "КОНЦЕПЦИЯ \"$concept\" в книге \"${book.title}\":\n\n$explanation"
         } else {
             "Информация о \"$concept\" не найдена в книге. Попробуйте задать вопрос по-другому."
         }
     }
     
     private fun extractCharacters(text: String): List<String> {
-        // Простой алгоритм извлечения возможных персонажей
         val lines = text.lines()
         val potentialCharacters = mutableSetOf<String>()
         
-        lines.forEach { line ->
+        lines.take(100).forEach { line ->
             val words = line.split(' ')
             words.forEach { word ->
-                if (word.length > 3 && word[0].isUpperCase() && !word[0].isLowerCase()) {
-                    if (word !in listOf("Глава", "Chapter", "Книга", "Book")) {
+                if (word.length in 3..15 && word[0].isUpperCase() && !word[0].isLowerCase()) {
+                    if (word !in listOf("Глава", "Chapter", "Книга", "Book", "Введение", "Заключение")) {
                         potentialCharacters.add(word)
                     }
                 }
             }
         }
         
-        return potentialCharacters.take(10).toList()
+        return potentialCharacters.take(8).toList()
     }
     
-    private fun semanticSearch(question: String, book: BookContent): String {
-        val questionWords = question.toLowerCase().split(' ').filter { it.length > 3 }
+    private fun simpleSearch(question: String, book: BookContent): String {
+        val questionWords = question.toLowerCase(Locale.getDefault()).split(' ').filter { it.length > 2 }
+        
+        if (questionWords.isEmpty()) {
+            return "Задайте конкретный вопрос о книге."
+        }
         
         // Ищем релевантные фрагменты
-        val relevantChunks = findRelevantTextChunks(questionWords, book.rawText)
+        val relevantParagraphs = findRelevantParagraphs(questionWords, book.rawText)
         
-        return if (relevantChunks.isNotEmpty()) {
-            "🔍 По вашему вопросу в книге найдено:\n\n" +
-            relevantChunks.take(3).joinToString("\n\n") { "• $it" } +
-            "\n\nМожете уточнить вопрос для более точного ответа."
+        return if (relevantParagraphs.isNotEmpty()) {
+            "ПО ВАШЕМУ ВОПРОСУ В КНИГЕ НАЙДЕНО:\n\n" +
+            relevantParagraphs.take(2).joinToString("\n\n") { "• $it" }
         } else {
-            "Информация по вашему вопросу не найдена в книге. Попробуйте переформулировать вопрос или спросите о конкретной теме из книги."
+            "Информация по вашему вопросу не найдена в книге. Попробуйте спросить о конкретной теме или концепции из книги."
         }
     }
     
-    private fun findRelevantTextChunks(questionWords: List<String>, text: String): List<String> {
+    private fun findRelevantParagraphs(questionWords: List<String>, text: String): List<String> {
         val paragraphs = text.split(Regex("\\n\\s*\\n"))
-            .filter { it.length in 50..500 }
+            .filter { it.length in 30..400 }
         
         return paragraphs.filter { paragraph ->
-            val paragraphLower = paragraph.toLowerCase()
-            questionWords.count { word -> paragraphLower.contains(word) } >= 1
-        }.take(5)
+            val paragraphLower = paragraph.toLowerCase(Locale.getDefault())
+            questionWords.any { word -> paragraphLower.contains(word) }
+        }.take(3)
     }
     
     fun getCurrentBookTitle(): String {
